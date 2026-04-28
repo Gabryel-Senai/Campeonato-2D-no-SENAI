@@ -2,12 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 export default function JogoPage() {
   const canvasRef = useRef(null);
   const keys = useRef({});
   const animationRef = useRef(null);
 
+  const [times, setTimes] = useState([]);
+  const [timeCasa, setTimeCasa] = useState("");
+  const [timeFora, setTimeFora] = useState("");
+  const [jogoIniciado, setJogoIniciado] = useState(false);
   const [placar, setPlacar] = useState({ casa: 0, fora: 0 });
   const [tempo, setTempo] = useState(60);
   const [fim, setFim] = useState(false);
@@ -17,6 +22,27 @@ export default function JogoPage() {
     enemy: { x: 620, y: 220, r: 14, color: "#dc2626", speed: 2.2 },
     ball: { x: 400, y: 225, r: 8, vx: 0, vy: 0 },
   });
+
+  const nomeCasa = times.find((t) => String(t.id) === String(timeCasa))?.nome || "Seu Time";
+  const nomeFora = times.find((t) => String(t.id) === String(timeFora))?.nome || "Adversário";
+
+  async function carregarTimes() {
+    const { data } = await supabase
+      .from("times")
+      .select("*")
+      .order("nome", { ascending: true });
+
+    setTimes(data || []);
+
+    if (data?.length >= 2) {
+      setTimeCasa(data[0].id);
+      setTimeFora(data[1].id);
+    }
+  }
+
+  useEffect(() => {
+    carregarTimes();
+  }, []);
 
   useEffect(() => {
     function down(e) {
@@ -37,7 +63,7 @@ export default function JogoPage() {
   }, []);
 
   useEffect(() => {
-    if (fim) return;
+    if (!jogoIniciado || fim) return;
 
     const timer = setInterval(() => {
       setTempo((t) => {
@@ -50,9 +76,11 @@ export default function JogoPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [fim]);
+  }, [jogoIniciado, fim]);
 
   useEffect(() => {
+    if (!jogoIniciado) return;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
@@ -163,16 +191,16 @@ export default function JogoPage() {
       ctx.fillRect(788, 175, 12, 100);
     }
 
-    function drawPlayer(obj) {
+    function drawPlayer(obj, label) {
       ctx.beginPath();
       ctx.fillStyle = obj.color;
       ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "white";
-      ctx.font = "12px Arial";
+      ctx.font = "11px Arial";
       ctx.textAlign = "center";
-      ctx.fillText("⚽", obj.x, obj.y + 4);
+      ctx.fillText(label, obj.x, obj.y - 20);
     }
 
     function drawBall() {
@@ -196,8 +224,8 @@ export default function JogoPage() {
       }
 
       drawField();
-      drawPlayer(game.current.player);
-      drawPlayer(game.current.enemy);
+      drawPlayer(game.current.player, nomeCasa);
+      drawPlayer(game.current.enemy, nomeFora);
       drawBall();
 
       animationRef.current = requestAnimationFrame(loop);
@@ -206,12 +234,18 @@ export default function JogoPage() {
     loop();
 
     return () => cancelAnimationFrame(animationRef.current);
-  }, [fim]);
+  }, [jogoIniciado, fim, nomeCasa, nomeFora]);
 
-  function reiniciar() {
+  function iniciarJogo() {
+    if (timeCasa === timeFora) {
+      alert("Escolha times diferentes.");
+      return;
+    }
+
     setPlacar({ casa: 0, fora: 0 });
     setTempo(60);
     setFim(false);
+    setJogoIniciado(true);
 
     game.current.player.x = 180;
     game.current.player.y = 220;
@@ -223,6 +257,10 @@ export default function JogoPage() {
     game.current.ball.vy = 0;
   }
 
+  function reiniciar() {
+    iniciarJogo();
+  }
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-6">
       <div className="max-w-5xl mx-auto">
@@ -230,34 +268,82 @@ export default function JogoPage() {
           <div>
             <h1 className="text-3xl font-bold">Jogo 2D</h1>
             <p className="text-zinc-400">
-              Use W A S D ou as setas para controlar o time azul.
+              Escolha seu time e jogue usando W A S D ou as setas.
             </p>
           </div>
 
-          <Link href="/" className="text-blue-400 hover:underline">
+          <Link href="/campeonato" className="text-blue-400 hover:underline">
             Voltar
           </Link>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4 flex justify-between text-xl font-bold">
-          <span>Time Azul: {placar.casa}</span>
-          <span>Tempo: {tempo}s</span>
-          <span>Time Vermelho: {placar.fora}</span>
-        </div>
+        {!jogoIniciado && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 mb-6">
+            <h2 className="text-2xl font-bold mb-5">Escolher Times</h2>
 
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={450}
-          className="w-full bg-green-700 rounded-2xl border border-zinc-700"
-        />
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block mb-2">Seu time</label>
+                <select
+                  value={timeCasa}
+                  onChange={(e) => setTimeCasa(e.target.value)}
+                  className="w-full bg-zinc-800 p-3 rounded-xl"
+                >
+                  {times.map((time) => (
+                    <option key={time.id} value={time.id}>
+                      {time.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-2">Adversário IA</label>
+                <select
+                  value={timeFora}
+                  onChange={(e) => setTimeFora(e.target.value)}
+                  className="w-full bg-zinc-800 p-3 rounded-xl"
+                >
+                  {times.map((time) => (
+                    <option key={time.id} value={time.id}>
+                      {time.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={iniciarJogo}
+              className="w-full bg-purple-600 hover:bg-purple-700 py-4 rounded-xl font-bold text-lg"
+            >
+              Começar Jogo 2D
+            </button>
+          </div>
+        )}
+
+        {jogoIniciado && (
+          <>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4 flex justify-between text-xl font-bold">
+              <span>{nomeCasa}: {placar.casa}</span>
+              <span>Tempo: {tempo}s</span>
+              <span>{nomeFora}: {placar.fora}</span>
+            </div>
+
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={450}
+              className="w-full bg-green-700 rounded-2xl border border-zinc-700"
+            />
+          </>
+        )}
 
         {fim && (
           <div className="mt-5 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-center">
             <h2 className="text-2xl font-bold mb-2">Fim de jogo!</h2>
             <p className="mb-4">
-              Placar final: Time Azul {placar.casa} x {placar.fora} Time
-              Vermelho
+              Placar final: {nomeCasa} {placar.casa} x {placar.fora} {nomeFora}
             </p>
 
             <button

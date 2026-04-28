@@ -45,6 +45,12 @@ export default function CampeonatoPage() {
             <h1 className="text-3xl font-bold">Tabela do Campeonato</h1>
             <p className="text-zinc-400">8 times disputando o título.</p>
           </div>
+          <Link
+            href="/jogo"
+            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl font-semibold"
+          >
+            Jogar 2D
+          </Link>
 
           <Link
             href="/simulador"
