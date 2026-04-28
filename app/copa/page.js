@@ -8,13 +8,13 @@ export default function CopaPage() {
   const [times, setTimes] = useState([]);
   const [meuTime, setMeuTime] = useState("");
   const [fase, setFase] = useState("Escolha seu time");
-  const [participantes, setParticipantes] = useState([]);
   const [confrontos, setConfrontos] = useState([]);
   const [campeao, setCampeao] = useState(null);
   const [eliminado, setEliminado] = useState(false);
 
   async function carregarTimes() {
     const { data } = await supabase.from("times").select("*").order("nome");
+
     setTimes(data || []);
 
     if (data?.length > 0) {
@@ -25,6 +25,66 @@ export default function CopaPage() {
   useEffect(() => {
     carregarTimes();
   }, []);
+
+  useEffect(() => {
+    const copaSalva = localStorage.getItem("copaAtual");
+
+    if (copaSalva) {
+      const data = JSON.parse(copaSalva);
+
+      setMeuTime(data.meuTime);
+      setFase(data.fase);
+      setConfrontos(data.confrontos);
+      setCampeao(data.campeao);
+      setEliminado(data.eliminado);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (fase === "Escolha seu time") return;
+
+    localStorage.setItem(
+      "copaAtual",
+      JSON.stringify({
+        meuTime,
+        fase,
+        confrontos,
+        campeao,
+        eliminado,
+      })
+    );
+  }, [meuTime, fase, confrontos, campeao, eliminado]);
+
+  useEffect(() => {
+    const resultadoSalvo = localStorage.getItem("resultadoCopa");
+
+    if (!resultadoSalvo || times.length === 0 || confrontos.length === 0) return;
+
+    const resultado = JSON.parse(resultadoSalvo);
+
+    const novosConfrontos = confrontos.map((jogo) => {
+      const jogoCerto =
+        String(jogo.timeA.id) === String(resultado.timeA) &&
+        String(jogo.timeB.id) === String(resultado.timeB);
+
+      if (!jogoCerto) return jogo;
+
+      const vencedorId =
+        resultado.golsA > resultado.golsB ? resultado.timeA : resultado.timeB;
+
+      const vencedor = times.find((t) => String(t.id) === String(vencedorId));
+
+      return {
+        ...jogo,
+        golsA: resultado.golsA,
+        golsB: resultado.golsB,
+        vencedor,
+      };
+    });
+
+    setConfrontos(novosConfrontos);
+    localStorage.removeItem("resultadoCopa");
+  }, [times, confrontos]);
 
   function embaralhar(lista) {
     return [...lista].sort(() => Math.random() - 0.5);
@@ -54,13 +114,19 @@ export default function CopaPage() {
   }
 
   function iniciarCopa() {
-    const lista = embaralhar(times);
+    if (times.length < 8) {
+      alert("Você precisa ter 8 times cadastrados.");
+      return;
+    }
 
-    setParticipantes(lista);
+    const lista = embaralhar(times).slice(0, 8);
+
     setConfrontos(criarConfrontos(lista));
     setFase("Quartas de Final");
     setCampeao(null);
     setEliminado(false);
+
+    localStorage.removeItem("resultadoCopa");
   }
 
   function gerarGols() {
@@ -87,15 +153,32 @@ export default function CopaPage() {
   }
 
   function jogarRodada() {
-    const jogosSimulados = confrontos.map(simularJogo);
-    const classificados = jogosSimulados.map((jogo) => jogo.vencedor);
+    const jogosAtualizados = confrontos.map((jogo) => {
+      const ehMeuTime =
+        String(jogo.timeA.id) === String(meuTime) ||
+        String(jogo.timeB.id) === String(meuTime);
 
-    const meuTimeObjeto = times.find((t) => String(t.id) === String(meuTime));
+      if (jogo.vencedor) return jogo;
+
+      if (ehMeuTime && !eliminado) {
+        alert("Você precisa jogar sua partida no 2D primeiro.");
+        return jogo;
+      }
+
+      return simularJogo(jogo);
+    });
+
+    const todosFinalizados = jogosAtualizados.every((jogo) => jogo.vencedor);
+
+    setConfrontos(jogosAtualizados);
+
+    if (!todosFinalizados) return;
+
+    const classificados = jogosAtualizados.map((jogo) => jogo.vencedor);
+
     const usuarioContinua = classificados.some(
-      (time) => String(time.id) === String(meuTimeObjeto.id)
+      (time) => String(time.id) === String(meuTime)
     );
-
-    setConfrontos(jogosSimulados);
 
     if (!usuarioContinua) {
       setEliminado(true);
@@ -108,10 +191,19 @@ export default function CopaPage() {
         return;
       }
 
-      setParticipantes(classificados);
       setConfrontos(criarConfrontos(classificados));
       setFase(nomeFase(classificados.length));
-    }, 900);
+    }, 700);
+  }
+
+  function novaCopa() {
+    localStorage.removeItem("copaAtual");
+    localStorage.removeItem("resultadoCopa");
+
+    setFase("Escolha seu time");
+    setCampeao(null);
+    setConfrontos([]);
+    setEliminado(false);
   }
 
   return (
@@ -121,7 +213,7 @@ export default function CopaPage() {
           <div>
             <h1 className="text-3xl font-bold">Copa Mata-Mata</h1>
             <p className="text-zinc-400">
-              Escolha um time e tente ser campeão.
+              Escolha um time e jogue as partidas do seu clube no 2D.
             </p>
           </div>
 
@@ -162,7 +254,7 @@ export default function CopaPage() {
 
               {eliminado && !campeao && (
                 <p className="text-red-400 mt-2">
-                  Seu time foi eliminado. A copa continua automaticamente.
+                  Seu time foi eliminado. Agora os outros jogos serão simulados.
                 </p>
               )}
 
@@ -174,30 +266,45 @@ export default function CopaPage() {
             </div>
 
             <div className="grid gap-4 mb-6">
-              {confrontos.map((jogo, index) => (
-                <div
-                  key={index}
-                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5"
-                >
-                  <div className="flex justify-between items-center">
-                    <span>{jogo.timeA.nome}</span>
+              {confrontos.map((jogo, index) => {
+                const ehMeuTime =
+                  String(jogo.timeA.id) === String(meuTime) ||
+                  String(jogo.timeB.id) === String(meuTime);
 
-                    <strong className="text-xl">
-                      {jogo.golsA === null
-                        ? "x"
-                        : `${jogo.golsA} x ${jogo.golsB}`}
-                    </strong>
+                return (
+                  <div
+                    key={index}
+                    className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5"
+                  >
+                    <div className="flex justify-between items-center gap-3">
+                      <span>{jogo.timeA.nome}</span>
 
-                    <span>{jogo.timeB.nome}</span>
+                      <strong className="text-xl">
+                        {jogo.golsA === null
+                          ? "x"
+                          : `${jogo.golsA} x ${jogo.golsB}`}
+                      </strong>
+
+                      <span>{jogo.timeB.nome}</span>
+                    </div>
+
+                    {ehMeuTime && jogo.golsA === null && !eliminado && (
+                      <Link
+                        href={`/jogo?modo=copa&timeA=${jogo.timeA.id}&timeB=${jogo.timeB.id}&meuTime=${meuTime}`}
+                        className="block mt-4 text-center bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-bold"
+                      >
+                        Jogar Partida 2D
+                      </Link>
+                    )}
+
+                    {jogo.vencedor && (
+                      <p className="text-green-400 text-center mt-3">
+                        Classificado: {jogo.vencedor.nome}
+                      </p>
+                    )}
                   </div>
-
-                  {jogo.vencedor && (
-                    <p className="text-green-400 text-center mt-3">
-                      Classificado: {jogo.vencedor.nome}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {!campeao && (
@@ -205,23 +312,16 @@ export default function CopaPage() {
                 onClick={jogarRodada}
                 className="w-full bg-green-600 hover:bg-green-700 py-4 rounded-xl font-bold text-lg"
               >
-                Jogar Rodada
+                Avançar Rodada
               </button>
             )}
 
-            {campeao && (
-              <button
-                onClick={() => {
-                  setFase("Escolha seu time");
-                  setCampeao(null);
-                  setConfrontos([]);
-                  setEliminado(false);
-                }}
-                className="w-full bg-purple-600 hover:bg-purple-700 py-4 rounded-xl font-bold text-lg"
-              >
-                Nova Copa
-              </button>
-            )}
+            <button
+              onClick={novaCopa}
+              className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-xl font-bold text-lg"
+            >
+              Nova Copa
+            </button>
           </>
         )}
       </div>

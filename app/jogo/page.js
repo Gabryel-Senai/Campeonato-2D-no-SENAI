@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const WIDTH = 800;
@@ -10,6 +11,13 @@ const GOAL_TOP = 175;
 const GOAL_BOTTOM = 275;
 
 export default function JogoPage() {
+  const searchParams = useSearchParams();
+
+  const modo = searchParams.get("modo");
+  const timeAParam = searchParams.get("timeA");
+  const timeBParam = searchParams.get("timeB");
+  const meuTimeParam = searchParams.get("meuTime");
+
   const canvasRef = useRef(null);
   const keys = useRef({});
   const animationRef = useRef(null);
@@ -25,15 +33,7 @@ export default function JogoPage() {
   const [controlado, setControlado] = useState(0);
 
   const game = useRef({
-    ball: {
-      x: 400,
-      y: 225,
-      r: 7,
-      vx: 0,
-      vy: 0,
-      ownerTeam: null,
-      owner: null,
-    },
+    ball: { x: 400, y: 225, r: 7, vx: 0, vy: 0, ownerTeam: null, owner: null },
     home: [],
     away: [],
   });
@@ -46,8 +46,14 @@ export default function JogoPage() {
 
   async function carregarTimes() {
     const { data } = await supabase.from("times").select("*").order("nome");
-
     setTimes(data || []);
+
+    if (modo === "copa" && timeAParam && timeBParam) {
+      setTimeCasa(timeAParam);
+      setTimeFora(timeBParam);
+      setTimeout(() => iniciarJogo(), 300);
+      return;
+    }
 
     if (data?.length >= 2) {
       setTimeCasa(data[0].id);
@@ -79,13 +85,26 @@ export default function JogoPage() {
 
   function resetarCampo() {
     criarJogadores();
+    game.current.ball = {
+      x: 400,
+      y: 225,
+      r: 7,
+      vx: 0,
+      vy: 0,
+      ownerTeam: null,
+      owner: null,
+    };
+  }
 
-    game.current.ball.x = 400;
-    game.current.ball.y = 225;
-    game.current.ball.vx = 0;
-    game.current.ball.vy = 0;
-    game.current.ball.ownerTeam = null;
-    game.current.ball.owner = null;
+  function iniciarJogo() {
+    if (timeCasa === timeFora) return;
+
+    setPlacar({ casa: 0, fora: 0 });
+    setTempo(90);
+    setFim(false);
+    setControlado(0);
+    setJogoIniciado(true);
+    resetarCampo();
   }
 
   useEffect(() => {
@@ -172,7 +191,6 @@ export default function JogoPage() {
 
     function dominarBola() {
       const b = game.current.ball;
-
       if (b.ownerTeam) return;
 
       game.current.home.forEach((p, i) => {
@@ -206,9 +224,7 @@ export default function JogoPage() {
       limitarCampo(p);
 
       game.current.home.forEach((j, i) => {
-        if (i !== controlado) {
-          moveTo(j, j.baseX, j.baseY, 0.6);
-        }
+        if (i !== controlado) moveTo(j, j.baseX, j.baseY, 0.6);
       });
     }
 
@@ -221,18 +237,7 @@ export default function JogoPage() {
       if (b.ownerTeam !== "home") return;
 
       const dono = game.current.home[b.owner];
-
-      let alvoIndex = 0;
-      let maiorX = -1;
-
-      game.current.home.forEach((p, i) => {
-        if (i !== b.owner && p.x > maiorX) {
-          maiorX = p.x;
-          alvoIndex = i;
-        }
-      });
-
-      const alvo = game.current.home[alvoIndex];
+      const alvo = game.current.home.find((p, i) => i !== b.owner) || game.current.home[0];
 
       b.ownerTeam = null;
       b.owner = null;
@@ -267,9 +272,8 @@ export default function JogoPage() {
       if (b.ownerTeam !== "away") return;
 
       const donoIA = game.current.away[b.owner];
-      const dist = distance(jogador, donoIA);
 
-      if (dist < 35) {
+      if (distance(jogador, donoIA) < 35) {
         b.ownerTeam = "home";
         b.owner = controlado;
         b.vx = 0;
@@ -291,24 +295,12 @@ export default function JogoPage() {
           return;
         }
 
-        const atacante = game.current.away[4];
-
-        if (distance(dono, atacante) > 80 && Math.random() < 0.015) {
-          b.ownerTeam = null;
-          b.owner = null;
-          b.vx = (atacante.x - dono.x) * 0.08;
-          b.vy = (atacante.y - dono.y) * 0.08;
-          return;
-        }
-
         moveTo(dono, 70, 225, dono.speed);
       } else {
         let maisPerto = game.current.away[0];
 
         game.current.away.forEach((p) => {
-          if (distance(p, b) < distance(maisPerto, b)) {
-            maisPerto = p;
-          }
+          if (distance(p, b) < distance(maisPerto, b)) maisPerto = p;
         });
 
         moveTo(maisPerto, b.x, b.y, maisPerto.speed);
@@ -331,13 +323,10 @@ export default function JogoPage() {
 
       b.x += b.vx;
       b.y += b.vy;
-
       b.vx *= 0.98;
       b.vy *= 0.98;
 
-      if (b.y < 20 || b.y > HEIGHT - 20) {
-        b.vy *= -1;
-      }
+      if (b.y < 20 || b.y > HEIGHT - 20) b.vy *= -1;
 
       if (b.x <= 0) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
@@ -374,7 +363,6 @@ export default function JogoPage() {
 
       ctx.strokeStyle = "white";
       ctx.lineWidth = 3;
-
       ctx.strokeRect(20, 20, 760, 410);
 
       ctx.beginPath();
@@ -446,31 +434,33 @@ export default function JogoPage() {
 
       drawBall();
 
+      if (fim && modo === "copa") {
+        if (!window._voltandoParaCopa) {
+          window._voltandoParaCopa = true;
+
+          localStorage.setItem(
+            "resultadoCopa",
+            JSON.stringify({
+              timeA: timeAParam,
+              timeB: timeBParam,
+              golsA: placar.casa,
+              golsB: placar.fora,
+            })
+          );
+
+          setTimeout(() => {
+            window.location.href = "/copa";
+          }, 2000);
+        }
+      }
+
       animationRef.current = requestAnimationFrame(loop);
     }
 
     loop();
 
     return () => cancelAnimationFrame(animationRef.current);
-  }, [jogoIniciado, fim, controlado]);
-
-  function iniciarJogo() {
-    if (timeCasa === timeFora) {
-      alert("Escolha times diferentes.");
-      return;
-    }
-
-    setPlacar({ casa: 0, fora: 0 });
-    setTempo(90);
-    setFim(false);
-    setControlado(0);
-    setJogoIniciado(true);
-    resetarCampo();
-  }
-
-  function reiniciar() {
-    iniciarJogo();
-  }
+  }, [jogoIniciado, fim, controlado, placar, modo, timeAParam, timeBParam]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-6">
@@ -499,6 +489,7 @@ export default function JogoPage() {
                   value={timeCasa}
                   onChange={(e) => setTimeCasa(e.target.value)}
                   className="w-full bg-zinc-800 p-3 rounded-xl"
+                  disabled={modo === "copa"}
                 >
                   {times.map((time) => (
                     <option key={time.id} value={time.id}>
@@ -514,6 +505,7 @@ export default function JogoPage() {
                   value={timeFora}
                   onChange={(e) => setTimeFora(e.target.value)}
                   className="w-full bg-zinc-800 p-3 rounded-xl"
+                  disabled={modo === "copa"}
                 >
                   {times.map((time) => (
                     <option key={time.id} value={time.id}>
@@ -557,12 +549,20 @@ export default function JogoPage() {
               Placar final: {nomeCasa} {placar.casa} x {placar.fora} {nomeFora}
             </p>
 
-            <button
-              onClick={reiniciar}
-              className="bg-green-600 hover:bg-green-700 px-5 py-3 rounded-xl font-bold"
-            >
-              Jogar novamente
-            </button>
+            {modo !== "copa" && (
+              <button
+                onClick={iniciarJogo}
+                className="bg-green-600 hover:bg-green-700 px-5 py-3 rounded-xl font-bold"
+              >
+                Jogar novamente
+              </button>
+            )}
+
+            {modo === "copa" && (
+              <p className="text-zinc-400">
+                Voltando para a Copa...
+              </p>
+            )}
           </div>
         )}
       </div>
