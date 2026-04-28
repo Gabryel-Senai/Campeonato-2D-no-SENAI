@@ -75,11 +75,11 @@ export default function JogoPage() {
     ];
 
     game.current.away = [
-      { nome: "Goleiro IA", x: 710, y: 225, baseX: 710, baseY: 225, r: 12, speed: 2.9 },
-      { nome: "Zagueiro IA", x: 590, y: 120, baseX: 590, baseY: 120, r: 12, speed: 2.9 },
-      { nome: "Lateral IA", x: 590, y: 330, baseX: 590, baseY: 330, r: 12, speed: 2.9 },
-      { nome: "Meia IA", x: 440, y: 170, baseX: 440, baseY: 170, r: 12, speed: 3.1 },
-      { nome: "Atacante IA", x: 390, y: 280, baseX: 390, baseY: 280, r: 12, speed: 3.2 },
+      { nome: "Goleiro IA", x: 710, y: 225, baseX: 710, baseY: 225, r: 12, speed: 1.9 },
+      { nome: "Zagueiro IA", x: 590, y: 120, baseX: 590, baseY: 120, r: 12, speed: 1.9 },
+      { nome: "Lateral IA", x: 590, y: 330, baseX: 590, baseY: 330, r: 12, speed: 1.9 },
+      { nome: "Meia IA", x: 440, y: 170, baseX: 440, baseY: 170, r: 12, speed: 1.9 },
+      { nome: "Atacante IA", x: 390, y: 280, baseX: 390, baseY: 280, r: 12, speed: 2.2 },
     ];
   }
 
