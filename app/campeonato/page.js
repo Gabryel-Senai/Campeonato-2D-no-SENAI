@@ -51,7 +51,12 @@ export default function CampeonatoPage() {
           >
             Jogar 2D
           </Link>
-
+          <Link
+            href="/copa"
+            className="bg-yellow-600 hover:bg-yellow-700 px-5 py-3 rounded-xl font-semibold"
+          >
+            Copa Mata-Mata
+          </Link>
           <Link
             href="/simulador"
             className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl font-semibold"

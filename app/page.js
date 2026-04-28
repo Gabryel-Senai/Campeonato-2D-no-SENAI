@@ -13,8 +13,14 @@ export default function Home() {
           <Link href="/campeonato" className="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl font-semibold">
             Ver Campeonato
           </Link>
-          <Link href="/jogo" className="bg-purple-600 hover:bg-purple-700 px-5 py-3 rounded-xl font-semibold">          
+          <Link href="/jogo" className="bg-purple-600 hover:bg-purple-700 px-5 py-3 rounded-xl font-semibold">
             Jogar 2D
+          </Link>
+          <Link
+            href="/copa"
+            className="bg-yellow-600 hover:bg-yellow-700 px-5 py-3 rounded-xl font-semibold"
+          >
+            Copa Mata-Mata
           </Link>
 
           <Link href="/simulador" className="bg-green-600 hover:bg-green-700 px-5 py-3 rounded-xl font-semibold">
