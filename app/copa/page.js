@@ -12,6 +12,13 @@ export default function CopaPage() {
   const [campeao, setCampeao] = useState(null);
   const [eliminado, setEliminado] = useState(false);
 
+  const [chaveamento, setChaveamento] = useState({
+    quartas: [],
+    semifinal: [],
+    final: [],
+    campeao: null,
+  });
+
   function escudoTime(nome) {
     const escudos = {
       Corinthians: "/escudos/corinthians.png",
@@ -45,11 +52,16 @@ export default function CopaPage() {
 
     if (copaSalva) {
       const data = JSON.parse(copaSalva);
+
       setMeuTime(data.meuTime);
       setFase(data.fase);
       setConfrontos(data.confrontos);
       setCampeao(data.campeao);
       setEliminado(data.eliminado);
+
+      if (data.chaveamento) {
+        setChaveamento(data.chaveamento);
+      }
     }
   }, []);
 
@@ -64,9 +76,10 @@ export default function CopaPage() {
         confrontos,
         campeao,
         eliminado,
+        chaveamento,
       })
     );
-  }, [meuTime, fase, confrontos, campeao, eliminado]);
+  }, [meuTime, fase, confrontos, campeao, eliminado, chaveamento]);
 
   useEffect(() => {
     const resultadoSalvo = localStorage.getItem("resultadoCopa");
@@ -96,8 +109,21 @@ export default function CopaPage() {
     });
 
     setConfrontos(novosConfrontos);
+
+    if (fase === "Quartas de Final") {
+      setChaveamento((prev) => ({ ...prev, quartas: novosConfrontos }));
+    }
+
+    if (fase === "Semifinal") {
+      setChaveamento((prev) => ({ ...prev, semifinal: novosConfrontos }));
+    }
+
+    if (fase === "Final") {
+      setChaveamento((prev) => ({ ...prev, final: novosConfrontos }));
+    }
+
     localStorage.removeItem("resultadoCopa");
-  }, [times, confrontos]);
+  }, [times, confrontos, fase]);
 
   function embaralhar(lista) {
     return [...lista].sort(() => Math.random() - 0.5);
@@ -133,11 +159,19 @@ export default function CopaPage() {
     }
 
     const lista = embaralhar(times).slice(0, 8);
+    const quartas = criarConfrontos(lista);
 
-    setConfrontos(criarConfrontos(lista));
+    setConfrontos(quartas);
     setFase("Quartas de Final");
     setCampeao(null);
     setEliminado(false);
+
+    setChaveamento({
+      quartas,
+      semifinal: [],
+      final: [],
+      campeao: null,
+    });
 
     localStorage.removeItem("resultadoCopa");
   }
@@ -181,6 +215,18 @@ export default function CopaPage() {
       return simularJogo(jogo);
     });
 
+    if (fase === "Quartas de Final") {
+      setChaveamento((prev) => ({ ...prev, quartas: jogosAtualizados }));
+    }
+
+    if (fase === "Semifinal") {
+      setChaveamento((prev) => ({ ...prev, semifinal: jogosAtualizados }));
+    }
+
+    if (fase === "Final") {
+      setChaveamento((prev) => ({ ...prev, final: jogosAtualizados }));
+    }
+
     const todosFinalizados = jogosAtualizados.every((jogo) => jogo.vencedor);
 
     setConfrontos(jogosAtualizados);
@@ -201,11 +247,34 @@ export default function CopaPage() {
       if (classificados.length === 1) {
         setCampeao(classificados[0]);
         setFase("Campeão");
+
+        setChaveamento((prev) => ({
+          ...prev,
+          campeao: classificados[0],
+        }));
+
         return;
       }
 
-      setConfrontos(criarConfrontos(classificados));
-      setFase(nomeFase(classificados.length));
+      const novaFase = nomeFase(classificados.length);
+      const novosJogos = criarConfrontos(classificados);
+
+      setConfrontos(novosJogos);
+      setFase(novaFase);
+
+      if (novaFase === "Semifinal") {
+        setChaveamento((prev) => ({
+          ...prev,
+          semifinal: novosJogos,
+        }));
+      }
+
+      if (novaFase === "Final") {
+        setChaveamento((prev) => ({
+          ...prev,
+          final: novosJogos,
+        }));
+      }
     }, 700);
   }
 
@@ -217,11 +286,127 @@ export default function CopaPage() {
     setCampeao(null);
     setConfrontos([]);
     setEliminado(false);
+
+    setChaveamento({
+      quartas: [],
+      semifinal: [],
+      final: [],
+      campeao: null,
+    });
+  }
+
+  function CardTime({ time, lado = "esquerda" }) {
+    if (!time) {
+      return (
+        <div className="bg-zinc-800/60 rounded-xl p-2 text-zinc-500 text-xs">
+          Aguardando
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`bg-zinc-800 rounded-xl p-2 flex items-center gap-2 ${
+          lado === "direita" ? "justify-end" : ""
+        }`}
+      >
+        {lado === "esquerda" && (
+          <img
+            src={escudoTime(time.nome)}
+            alt={time.nome}
+            className="w-5 h-5 object-contain"
+          />
+        )}
+
+        <span className="text-xs truncate">{time.nome}</span>
+
+        {lado === "direita" && (
+          <img
+            src={escudoTime(time.nome)}
+            alt={time.nome}
+            className="w-5 h-5 object-contain"
+          />
+        )}
+      </div>
+    );
+  }
+
+  function JogoChave({ jogo, lado = "esquerda" }) {
+    return (
+      <div className="space-y-2">
+        <CardTime time={jogo?.timeA} lado={lado} />
+
+        <div className="text-center text-xs text-zinc-400 font-bold">
+          {jogo?.golsA === null || jogo?.golsA === undefined
+            ? "x"
+            : `${jogo.golsA} x ${jogo.golsB}`}
+        </div>
+
+        <CardTime time={jogo?.timeB} lado={lado} />
+
+        {jogo?.vencedor && (
+          <div className="text-center text-[11px] text-green-400">
+            {jogo.vencedor.nome}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function ChaveamentoVisual() {
+    return (
+      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+        <h2 className="text-xl font-bold mb-4 text-center">
+          Chaveamento da Copa
+        </h2>
+
+        <div className="grid grid-cols-4 gap-4 items-center">
+          <div className="space-y-4">
+            <h3 className="text-center text-sm text-zinc-400">Quartas</h3>
+            {chaveamento.quartas.map((jogo, index) => (
+              <JogoChave key={index} jogo={jogo} />
+            ))}
+          </div>
+
+          <div className="space-y-10">
+            <h3 className="text-center text-sm text-zinc-400">Semi</h3>
+            <JogoChave jogo={chaveamento.semifinal[0]} />
+            <JogoChave jogo={chaveamento.semifinal[1]} />
+          </div>
+
+          <div className="space-y-10">
+            <h3 className="text-center text-sm text-zinc-400">Final</h3>
+            <JogoChave jogo={chaveamento.final[0]} />
+          </div>
+
+          <div className="text-center">
+            <h3 className="text-sm text-zinc-400 mb-4">Campeão</h3>
+
+            <div className="text-5xl mb-4">🏆</div>
+
+            {chaveamento.campeao ? (
+              <div className="bg-yellow-500 text-zinc-950 rounded-2xl p-3 font-bold">
+                <img
+                  src={escudoTime(chaveamento.campeao.nome)}
+                  alt={chaveamento.campeao.nome}
+                  className="w-10 h-10 object-contain mx-auto mb-2"
+                />
+                {chaveamento.campeao.nome}
+              </div>
+            ) : (
+              <div className="bg-zinc-800 rounded-2xl p-3 text-zinc-400 text-sm">
+                Aguardando
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between mb-6">
           <h1 className="text-3xl font-bold">Copa Mata-Mata</h1>
 
@@ -231,7 +416,9 @@ export default function CopaPage() {
         </div>
 
         {fase === "Escolha seu time" && (
-          <div className="bg-zinc-900 p-8 rounded-3xl">
+          <div className="bg-zinc-900 p-8 rounded-3xl max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold mb-5">Escolha seu time</h2>
+
             <select
               value={meuTime}
               onChange={(e) => setMeuTime(e.target.value)}
@@ -254,87 +441,93 @@ export default function CopaPage() {
         )}
 
         {fase !== "Escolha seu time" && (
-          <>
-            <h2 className="text-2xl mb-4">{fase}</h2>
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_520px] gap-6">
+            <section>
+              <h2 className="text-2xl mb-4">{fase}</h2>
 
-            {eliminado && !campeao && (
-              <p className="text-red-400 mb-4">
-                Seu time foi eliminado. Agora os outros jogos serão simulados.
-              </p>
-            )}
+              {eliminado && !campeao && (
+                <p className="text-red-400 mb-4">
+                  Seu time foi eliminado. Agora os outros jogos serão simulados.
+                </p>
+              )}
 
-            {campeao && (
-              <p className="text-yellow-400 text-xl font-bold mb-4">
-                Campeão: {campeao.nome}
-              </p>
-            )}
+              {campeao && (
+                <p className="text-yellow-400 text-xl font-bold mb-4">
+                  Campeão: {campeao.nome}
+                </p>
+              )}
 
-            <div className="grid gap-4 mb-6">
-              {confrontos.map((jogo, index) => {
-                const ehMeuTime =
-                  String(jogo.timeA.id) === String(meuTime) ||
-                  String(jogo.timeB.id) === String(meuTime);
+              <div className="grid gap-4 mb-6">
+                {confrontos.map((jogo, index) => {
+                  const ehMeuTime =
+                    String(jogo.timeA.id) === String(meuTime) ||
+                    String(jogo.timeB.id) === String(meuTime);
 
-                return (
-                  <div
-                    key={index}
-                    className="bg-zinc-900 p-5 rounded-2xl grid grid-cols-[1fr_80px_1fr_90px] items-center gap-4"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={escudoTime(jogo.timeA.nome)}
-                        alt={jogo.timeA.nome}
-                        className="w-8 h-8 object-contain shrink-0"
-                      />
-                      <span className="truncate">{jogo.timeA.nome}</span>
+                  return (
+                    <div
+                      key={index}
+                      className="bg-zinc-900 p-5 rounded-2xl grid grid-cols-[1fr_80px_1fr_90px] items-center gap-4"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={escudoTime(jogo.timeA.nome)}
+                          alt={jogo.timeA.nome}
+                          className="w-8 h-8 object-contain shrink-0"
+                        />
+                        <span className="truncate">{jogo.timeA.nome}</span>
+                      </div>
+
+                      <strong className="text-center">
+                        {jogo.golsA === null
+                          ? "x"
+                          : `${jogo.golsA} x ${jogo.golsB}`}
+                      </strong>
+
+                      <div className="flex items-center justify-end gap-3 min-w-0">
+                        <span className="truncate">{jogo.timeB.nome}</span>
+                        <img
+                          src={escudoTime(jogo.timeB.nome)}
+                          alt={jogo.timeB.nome}
+                          className="w-8 h-8 object-contain shrink-0"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        {ehMeuTime && jogo.golsA === null && !eliminado && (
+                          <Link
+                            href={`/jogo?modo=copa&timeA=${jogo.timeA.id}&timeB=${jogo.timeB.id}`}
+                            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl font-semibold"
+                          >
+                            Jogar
+                          </Link>
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    <strong className="text-center">
-                      {jogo.golsA === null
-                        ? "x"
-                        : `${jogo.golsA} x ${jogo.golsB}`}
-                    </strong>
+              {!campeao && (
+                <button
+                  onClick={jogarRodada}
+                  className="w-full bg-green-600 py-4 rounded-xl font-bold"
+                >
+                  Avançar Rodada
+                </button>
+              )}
 
-                    <div className="flex items-center justify-end gap-3 min-w-0">
-                      <span className="truncate">{jogo.timeB.nome}</span>
-                      <img
-                        src={escudoTime(jogo.timeB.nome)}
-                        alt={jogo.timeB.nome}
-                        className="w-8 h-8 object-contain shrink-0"
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      {ehMeuTime && jogo.golsA === null && !eliminado && (
-                        <Link
-                          href={`/jogo?modo=copa&timeA=${jogo.timeA.id}&timeB=${jogo.timeB.id}`}
-                          className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl font-semibold"
-                        >
-                          Jogar
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {!campeao && (
               <button
-                onClick={jogarRodada}
-                className="w-full bg-green-600 py-4 rounded-xl font-bold"
+                onClick={novaCopa}
+                className="w-full mt-3 bg-zinc-800 py-4 rounded-xl"
               >
-                Avançar Rodada
+                Nova Copa
               </button>
-            )}
+            </section>
 
-            <button
-              onClick={novaCopa}
-              className="w-full mt-3 bg-zinc-800 py-4 rounded-xl"
-            >
-              Nova Copa
-            </button>
-          </>
+            <aside>
+              <ChaveamentoVisual />
+            </aside>
+          </div>
         )}
       </div>
     </main>
