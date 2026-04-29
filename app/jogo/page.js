@@ -20,8 +20,8 @@ function JogoContent() {
 
   const canvasRef = useRef(null);
   const keys = useRef({});
+  const actions = useRef({ pass: false, shoot: false, steal: false });
   const animationRef = useRef(null);
-  const lastAction = useRef(0);
   const replayFrames = useRef([]);
   const replayIndex = useRef(0);
   const pausadoPorGol = useRef(false);
@@ -88,7 +88,7 @@ function JogoContent() {
       setTimeFora(timeBParam);
 
       setTimeout(() => {
-        iniciarJogo();
+        iniciarJogo(timeAParam, timeBParam);
       }, 300);
 
       return;
@@ -106,19 +106,19 @@ function JogoContent() {
 
   function criarJogadores() {
     game.current.home = [
-      { nome: "Goleiro", x: 90, y: 225, baseX: 90, baseY: 225, r: 12, speed: 3.2 },
-      { nome: "Zagueiro", x: 210, y: 120, baseX: 210, baseY: 120, r: 12, speed: 3.3 },
-      { nome: "Lateral", x: 210, y: 330, baseX: 210, baseY: 330, r: 12, speed: 3.3 },
-      { nome: "Meia", x: 360, y: 170, baseX: 360, baseY: 170, r: 12, speed: 3.5 },
-      { nome: "Atacante", x: 430, y: 280, baseX: 430, baseY: 280, r: 12, speed: 3.8 },
+      { nome: "Goleiro", x: 90, y: 225, baseX: 90, baseY: 225, r: 12, speed: 3.2, role: "GK" },
+      { nome: "Zagueiro", x: 210, y: 120, baseX: 210, baseY: 120, r: 12, speed: 3.3, role: "DEF" },
+      { nome: "Lateral", x: 210, y: 330, baseX: 210, baseY: 330, r: 12, speed: 3.3, role: "DEF" },
+      { nome: "Meia", x: 360, y: 170, baseX: 360, baseY: 170, r: 12, speed: 3.5, role: "MEI" },
+      { nome: "Atacante", x: 430, y: 280, baseX: 430, baseY: 280, r: 12, speed: 3.8, role: "ATA" },
     ];
 
     game.current.away = [
-      { nome: "Goleiro IA", x: 710, y: 225, baseX: 710, baseY: 225, r: 12, speed: 2.0 },
-      { nome: "Zagueiro IA", x: 590, y: 120, baseX: 590, baseY: 120, r: 12, speed: 2.0 },
-      { nome: "Lateral IA", x: 590, y: 330, baseX: 590, baseY: 330, r: 12, speed: 2.0 },
-      { nome: "Meia IA", x: 440, y: 170, baseX: 440, baseY: 170, r: 12, speed: 2.2 },
-      { nome: "Atacante IA", x: 390, y: 280, baseX: 390, baseY: 280, r: 12, speed: 2.4 },
+      { nome: "Goleiro IA", x: 710, y: 225, baseX: 710, baseY: 225, r: 12, speed: 2.0, role: "GK" },
+      { nome: "Zagueiro IA", x: 590, y: 120, baseX: 590, baseY: 120, r: 12, speed: 2.0, role: "DEF" },
+      { nome: "Lateral IA", x: 590, y: 330, baseX: 590, baseY: 330, r: 12, speed: 2.0, role: "DEF" },
+      { nome: "Meia IA", x: 440, y: 170, baseX: 440, baseY: 170, r: 12, speed: 2.2, role: "MEI" },
+      { nome: "Atacante IA", x: 390, y: 280, baseX: 390, baseY: 280, r: 12, speed: 2.4, role: "ATA" },
     ];
   }
 
@@ -138,15 +138,18 @@ function JogoContent() {
     replayFrames.current = [];
     replayIndex.current = 0;
     pausadoPorGol.current = false;
+
     setMensagemGol("");
     setEmReplay(false);
   }
 
-  function iniciarJogo() {
-    if (timeCasa === timeFora) return;
+  function iniciarJogo(casaId = timeCasa, foraId = timeFora) {
+    if (String(casaId) === String(foraId)) return;
 
     window._voltandoParaCopa = false;
 
+    setTimeCasa(casaId);
+    setTimeFora(foraId);
     setPlacar({ casa: 0, fora: 0 });
     setTempo(90);
     setFim(false);
@@ -157,7 +160,17 @@ function JogoContent() {
 
   useEffect(() => {
     function down(e) {
-      keys.current[e.key.toLowerCase()] = true;
+      const key = e.key.toLowerCase();
+
+      if (["h", "j", "k", " "].includes(key)) {
+        e.preventDefault();
+      }
+
+      if (key === "h") actions.current.pass = true;
+      if (key === "j") actions.current.shoot = true;
+      if (key === "k") actions.current.steal = true;
+
+      keys.current[key] = true;
     }
 
     function up(e) {
@@ -216,6 +229,10 @@ function JogoContent() {
       obj.y = Math.max(20, Math.min(HEIGHT - 20, obj.y));
     }
 
+    function bolaPertoDoJogador(jogador) {
+      return distance(jogador, game.current.ball) < jogador.r + game.current.ball.r + 18;
+    }
+
     function atualizarBolaNoDono() {
       const b = game.current.ball;
 
@@ -271,11 +288,59 @@ function JogoContent() {
       if (keys.current["d"]) p.x += p.speed;
 
       limitarCampo(p);
+    }
+
+    function moverCompanheirosInteligentes() {
+      const b = game.current.ball;
+      const homeHasBall = b.ownerTeam === "home";
+      const awayHasBall = b.ownerTeam === "away";
 
       game.current.home.forEach((j, i) => {
-        if (i !== controlado) {
-          moveTo(j, j.baseX, j.baseY, 0.55);
+        if (i === controlado) return;
+
+        let targetX = j.baseX;
+        let targetY = j.baseY;
+
+        if (homeHasBall) {
+          const dono = game.current.home[b.owner];
+
+          if (j.role === "ATA") {
+            targetX = Math.min(690, dono.x + 150);
+            targetY = dono.y < HEIGHT / 2 ? 315 : 135;
+          } else if (j.role === "MEI") {
+            targetX = Math.min(610, dono.x + 90);
+            targetY = dono.y < HEIGHT / 2 ? 260 : 190;
+          } else if (j.role === "DEF") {
+            targetX = Math.max(150, dono.x - 120);
+            targetY = j.baseY;
+          }
+
+          const marcadorPerto = game.current.away.some((ia) => distance(ia, j) < 45);
+          if (marcadorPerto) {
+            targetY += j.y < HEIGHT / 2 ? 35 : -35;
+          }
         }
+
+        if (awayHasBall) {
+          if (j.role === "ATA" || j.role === "MEI") {
+            targetX = Math.max(230, b.x + 40);
+            targetY = b.y;
+          } else if (j.role === "DEF") {
+            targetX = Math.max(120, b.x - 80);
+            targetY = j.baseY;
+          }
+        }
+
+        if (!homeHasBall && !awayHasBall) {
+          const pertoDaBola = distance(j, b) < 140;
+          if (pertoDaBola) {
+            targetX = b.x;
+            targetY = b.y;
+          }
+        }
+
+        moveTo(j, targetX, targetY, 1.15);
+        limitarCampo(j);
       });
     }
 
@@ -287,9 +352,10 @@ function JogoContent() {
       game.current.home.forEach((p, i) => {
         if (i === donoIndex) return;
 
-        const avanco = p.x;
         const distancia = distance(dono, p);
-        const pontuacao = avanco - distancia * 0.25;
+        const livre = game.current.away.every((ia) => distance(ia, p) > 38);
+        const avanco = p.x;
+        const pontuacao = avanco + (livre ? 120 : 0) - distancia * 0.35;
 
         if (pontuacao > melhorPontuacao) {
           melhorPontuacao = pontuacao;
@@ -301,14 +367,19 @@ function JogoContent() {
     }
 
     function passarBola() {
-      const now = Date.now();
-      if (now - lastAction.current < 350) return;
-
       const b = game.current.ball;
+      const jogador = game.current.home[controlado];
 
-      if (b.ownerTeam !== "home") return;
-
-      lastAction.current = now;
+      if (b.ownerTeam !== "home") {
+        if (bolaPertoDoJogador(jogador)) {
+          b.ownerTeam = "home";
+          b.owner = controlado;
+          b.vx = 0;
+          b.vy = 0;
+        } else {
+          return;
+        }
+      }
 
       const donoIndex = b.owner;
       const dono = game.current.home[donoIndex];
@@ -319,46 +390,74 @@ function JogoContent() {
 
       b.ownerTeam = null;
       b.owner = null;
-      b.vx = (alvo.x - dono.x) * 0.09;
-      b.vy = (alvo.y - dono.y) * 0.09;
+      b.vx = (alvo.x - dono.x) * 0.105;
+      b.vy = (alvo.y - dono.y) * 0.105;
     }
 
     function chutarBola() {
-      const now = Date.now();
-      if (now - lastAction.current < 350) return;
-
-      const b = game.current.ball;
-
-      if (b.ownerTeam !== "home") return;
-
-      lastAction.current = now;
-
-      const dono = game.current.home[b.owner];
-
-      b.ownerTeam = null;
-      b.owner = null;
-      b.vx = 12;
-      b.vy = (GOAL_CENTER_Y - dono.y) * 0.045;
-    }
-
-    function tentarRoubar() {
-      const now = Date.now();
-      if (now - lastAction.current < 300) return;
-
       const b = game.current.ball;
       const jogador = game.current.home[controlado];
 
-      if (b.ownerTeam !== "away") return;
+      if (b.ownerTeam !== "home") {
+        if (bolaPertoDoJogador(jogador)) {
+          b.ownerTeam = "home";
+          b.owner = controlado;
+          b.vx = 0;
+          b.vy = 0;
+        } else {
+          return;
+        }
+      }
 
-      lastAction.current = now;
+      const dono = game.current.home[b.owner] || jogador;
 
-      const donoIA = game.current.away[b.owner];
+      b.ownerTeam = null;
+      b.owner = null;
 
-      if (donoIA && distance(jogador, donoIA) < 38) {
+      const forca = dono.x > 600 ? 10.5 : dono.x > 400 ? 12 : 14;
+      b.vx = forca;
+      b.vy = (GOAL_CENTER_Y - dono.y) * 0.055;
+    }
+
+    function tentarRoubar() {
+      const b = game.current.ball;
+      const jogador = game.current.home[controlado];
+
+      if (b.ownerTeam === "away") {
+        const donoIA = game.current.away[b.owner];
+
+        if (donoIA && distance(jogador, donoIA) < 42) {
+          b.ownerTeam = "home";
+          b.owner = controlado;
+          b.vx = 0;
+          b.vy = 0;
+        }
+
+        return;
+      }
+
+      if (!b.ownerTeam && bolaPertoDoJogador(jogador)) {
         b.ownerTeam = "home";
         b.owner = controlado;
         b.vx = 0;
         b.vy = 0;
+      }
+    }
+
+    function executarAcoes() {
+      if (actions.current.pass) {
+        passarBola();
+        actions.current.pass = false;
+      }
+
+      if (actions.current.shoot) {
+        chutarBola();
+        actions.current.shoot = false;
+      }
+
+      if (actions.current.steal) {
+        tentarRoubar();
+        actions.current.steal = false;
       }
     }
 
@@ -369,11 +468,24 @@ function JogoContent() {
         const dono = game.current.away[b.owner];
         if (!dono) return;
 
-        if (dono.x < 170) {
+        if (dono.x < 180) {
           b.ownerTeam = null;
           b.owner = null;
-          b.vx = -10;
-          b.vy = (GOAL_CENTER_Y - dono.y) * 0.045;
+          b.vx = -11;
+          b.vy = (GOAL_CENTER_Y - dono.y) * 0.05;
+          return;
+        }
+
+        const companheiroLivre = game.current.away
+          .map((p, index) => ({ p, index }))
+          .filter(({ index }) => index !== b.owner)
+          .sort((a, c) => a.p.x - c.p.x)[0];
+
+        if (companheiroLivre && Math.random() < 0.012) {
+          b.ownerTeam = null;
+          b.owner = null;
+          b.vx = (companheiroLivre.p.x - dono.x) * 0.09;
+          b.vy = (companheiroLivre.p.y - dono.y) * 0.09;
           return;
         }
 
@@ -391,7 +503,15 @@ function JogoContent() {
 
         game.current.away.forEach((p) => {
           if (p !== maisPerto) {
-            moveTo(p, p.baseX, p.baseY, 0.5);
+            let tx = p.baseX;
+            let ty = p.baseY;
+
+            if (b.ownerTeam === "home") {
+              tx = Math.max(230, b.x + 60);
+              ty = b.y + (p.baseY < HEIGHT / 2 ? -50 : 50);
+            }
+
+            moveTo(p, tx, ty, 0.7);
           }
         });
       }
@@ -471,12 +591,6 @@ function JogoContent() {
       }
 
       dominarBola();
-    }
-
-    function comandos() {
-      if (keys.current["h"]) passarBola();
-      if (keys.current["j"]) chutarBola();
-      if (keys.current["k"]) tentarRoubar();
     }
 
     function drawField() {
@@ -588,8 +702,9 @@ function JogoContent() {
 
       if (!fim) {
         movePlayer();
+        moverCompanheirosInteligentes();
         inteligenciaIA();
-        comandos();
+        executarAcoes();
         moverBolaLivre();
         registrarFrameReplay();
       }
@@ -679,7 +794,7 @@ function JogoContent() {
             </div>
 
             <button
-              onClick={iniciarJogo}
+              onClick={() => iniciarJogo()}
               className="w-full bg-purple-600 hover:bg-purple-700 py-4 rounded-xl font-bold text-lg"
             >
               Começar Jogo 2D
@@ -746,7 +861,7 @@ function JogoContent() {
 
             {modo !== "copa" && (
               <button
-                onClick={iniciarJogo}
+                onClick={() => iniciarJogo()}
                 className="bg-green-600 hover:bg-green-700 px-5 py-3 rounded-xl font-bold"
               >
                 Jogar novamente
