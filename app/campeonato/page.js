@@ -4,6 +4,21 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
+function escudoTime(nome) {
+  const escudos = {
+    Corinthians: "/escudos/corinthians.png",
+    Palmeiras: "/escudos/palmeiras.png",
+    "São Paulo": "/escudos/sao-paulo.png",
+    Santos: "/escudos/santos.png",
+    Flamengo: "/escudos/flamengo.png",
+    Vasco: "/escudos/vasco.png",
+    Grêmio: "/escudos/gremio.png",
+    Internacional: "/escudos/internacional.png",
+  };
+
+  return escudos[nome] || "/escudos/default.png";
+}
+
 export default function CampeonatoPage() {
   const [times, setTimes] = useState([]);
   const [partidas, setPartidas] = useState([]);
@@ -45,24 +60,29 @@ export default function CampeonatoPage() {
             <h1 className="text-3xl font-bold">Tabela do Campeonato</h1>
             <p className="text-zinc-400">8 times disputando o título.</p>
           </div>
-          <Link
-            href="/jogo"
-            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl font-semibold"
-          >
-            Jogar 2D
-          </Link>
-          <Link
-            href="/copa"
-            className="bg-yellow-600 hover:bg-yellow-700 px-5 py-3 rounded-xl font-semibold"
-          >
-            Copa Mata-Mata
-          </Link>
-          <Link
-            href="/simulador"
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl font-semibold"
-          >
-            Simular jogo
-          </Link>
+
+          <div className="flex gap-3">
+            <Link
+              href="/jogo"
+              className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl font-semibold"
+            >
+              Jogar 2D
+            </Link>
+
+            <Link
+              href="/copa"
+              className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-xl font-semibold"
+            >
+              Copa Mata-Mata
+            </Link>
+
+            <Link
+              href="/simulador"
+              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl font-semibold"
+            >
+              Simular jogo
+            </Link>
+          </div>
         </div>
 
         {loading ? (
@@ -88,14 +108,25 @@ export default function CampeonatoPage() {
                 <tbody>
                   {times.map((time, index) => (
                     <tr key={time.id} className="border-t border-zinc-800">
-                      <td className="p-3">{index + 1}</td>
-                      <td className="p-3 flex items-center gap-2">
-                        <span
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: time.cor }}
-                        />
-                        {time.nome}
+                      <td className="p-3 font-semibold">{index + 1}</td>
+
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: time.cor }}
+                          />
+
+                          <img
+                            src={escudoTime(time.nome)}
+                            alt={time.nome}
+                            className="w-7 h-7 object-contain"
+                          />
+
+                          <span className="font-medium">{time.nome}</span>
+                        </div>
                       </td>
+
                       <td className="p-3 font-bold">{time.pontos}</td>
                       <td className="p-3">{time.vitorias}</td>
                       <td className="p-3">{time.empates}</td>
@@ -115,15 +146,37 @@ export default function CampeonatoPage() {
               {partidas.map((partida) => (
                 <div
                   key={partida.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex justify-between"
+                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 grid grid-cols-[1fr_100px_1fr] items-center"
                 >
-                  <span>{partida.casa?.nome}</span>
-                  <strong>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={escudoTime(partida.casa?.nome)}
+                      alt={partida.casa?.nome || "Time casa"}
+                      className="w-7 h-7 object-contain"
+                    />
+                    <span>{partida.casa?.nome}</span>
+                  </div>
+
+                  <strong className="text-center">
                     {partida.gols_casa} x {partida.gols_fora}
                   </strong>
-                  <span>{partida.fora?.nome}</span>
+
+                  <div className="flex items-center justify-end gap-3">
+                    <span>{partida.fora?.nome}</span>
+                    <img
+                      src={escudoTime(partida.fora?.nome)}
+                      alt={partida.fora?.nome || "Time fora"}
+                      className="w-7 h-7 object-contain"
+                    />
+                  </div>
                 </div>
               ))}
+
+              {partidas.length === 0 && (
+                <p className="text-zinc-400">
+                  Nenhuma partida registrada ainda.
+                </p>
+              )}
             </div>
           </>
         )}
