@@ -22,6 +22,12 @@ export default function Home() {
           >
             Copa Mata-Mata
           </Link>
+          <Link
+            href="/copa-ia"
+            className="bg-cyan-600 hover:bg-cyan-700 px-5 py-3 rounded-xl font-semibold"
+          >
+            Copa Mata-Mata IA
+          </Link>
 
           <Link href="/simulador" className="bg-green-600 hover:bg-green-700 px-5 py-3 rounded-xl font-semibold">
             Simular Partida
