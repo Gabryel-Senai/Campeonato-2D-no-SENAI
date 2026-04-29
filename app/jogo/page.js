@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const WIDTH = 1000;
-const HEIGHT = 560;
+const WIDTH = 1920;
+const HEIGHT = 1080;
 const GOAL_TOP = 220;
 const GOAL_BOTTOM = 340;
 const GOAL_CENTER_Y = (GOAL_TOP + GOAL_BOTTOM) / 2;
@@ -936,8 +936,8 @@ function inteligenciaIA() {
 
             <canvas
               ref={canvasRef}
-              width={1000}
-              height={560}
+              width={1920}
+              height={1080}
               className="w-full bg-green-700 rounded-2xl border border-zinc-700"
             />
           </>
