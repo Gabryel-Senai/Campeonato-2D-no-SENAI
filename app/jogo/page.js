@@ -461,63 +461,165 @@ function JogoContent() {
       }
     }
 
-    function inteligenciaIA() {
-      const b = game.current.ball;
+    function escolherPasseIA(donoIndex) {
+  let alvoIndex = null;
+  let melhorPontuacao = -9999;
+  const dono = game.current.away[donoIndex];
 
-      if (b.ownerTeam === "away") {
-        const dono = game.current.away[b.owner];
-        if (!dono) return;
+  game.current.away.forEach((p, i) => {
+    if (i === donoIndex) return;
 
-        if (dono.x < 180) {
-          b.ownerTeam = null;
-          b.owner = null;
-          b.vx = -11;
-          b.vy = (GOAL_CENTER_Y - dono.y) * 0.05;
-          return;
+    const distancia = distance(dono, p);
+    const livre = game.current.home.every((j) => distance(j, p) > 45);
+    const avanco = WIDTH - p.x;
+
+    const pontuacao = avanco + (livre ? 120 : 0) - distancia * 0.35;
+
+    if (pontuacao > melhorPontuacao) {
+      melhorPontuacao = pontuacao;
+      alvoIndex = i;
+    }
+  });
+
+  return alvoIndex ?? 0;
+}
+
+function inteligenciaIA() {
+  const b = game.current.ball;
+
+  // IA tentando roubar se o jogador está com a bola
+  if (b.ownerTeam === "home") {
+    const donoHumano = game.current.home[b.owner];
+
+    let marcador = game.current.away[0];
+
+    game.current.away.forEach((ia) => {
+      if (distance(ia, donoHumano) < distance(marcador, donoHumano)) {
+        marcador = ia;
+      }
+    });
+
+    moveTo(marcador, donoHumano.x, donoHumano.y, marcador.speed + 0.7);
+
+    if (distance(marcador, donoHumano) < 34) {
+      b.ownerTeam = "away";
+      b.owner = game.current.away.indexOf(marcador);
+      b.vx = 0;
+      b.vy = 0;
+    }
+
+    game.current.away.forEach((ia) => {
+      if (ia !== marcador) {
+        let tx = ia.baseX;
+        let ty = ia.baseY;
+
+        if (ia.role === "DEF") {
+          tx = Math.max(450, donoHumano.x + 80);
+          ty = ia.baseY;
         }
 
-        const companheiroLivre = game.current.away
-          .map((p, index) => ({ p, index }))
-          .filter(({ index }) => index !== b.owner)
-          .sort((a, c) => a.p.x - c.p.x)[0];
-
-        if (companheiroLivre && Math.random() < 0.012) {
-          b.ownerTeam = null;
-          b.owner = null;
-          b.vx = (companheiroLivre.p.x - dono.x) * 0.09;
-          b.vy = (companheiroLivre.p.y - dono.y) * 0.09;
-          return;
+        if (ia.role === "MEI" || ia.role === "ATA") {
+          tx = Math.max(350, donoHumano.x + 40);
+          ty = donoHumano.y + (ia.baseY < HEIGHT / 2 ? -50 : 50);
         }
 
-        moveTo(dono, 80, GOAL_CENTER_Y, dono.speed);
-      } else {
-        let maisPerto = game.current.away[0];
+        moveTo(ia, tx, ty, 0.8);
+      }
+    });
 
-        game.current.away.forEach((p) => {
-          if (distance(p, b) < distance(maisPerto, b)) {
-            maisPerto = p;
-          }
-        });
+    game.current.away.forEach(limitarCampo);
+    return;
+  }
 
-        moveTo(maisPerto, b.x, b.y, maisPerto.speed);
+  // IA com a bola: ela decide chutar, tocar ou avançar
+  if (b.ownerTeam === "away") {
+    const dono = game.current.away[b.owner];
+    if (!dono) return;
 
-        game.current.away.forEach((p) => {
-          if (p !== maisPerto) {
-            let tx = p.baseX;
-            let ty = p.baseY;
+    const pertoDoGol = dono.x < 230;
+    const pressionado = game.current.home.some((j) => distance(j, dono) < 45);
 
-            if (b.ownerTeam === "home") {
-              tx = Math.max(230, b.x + 60);
-              ty = b.y + (p.baseY < HEIGHT / 2 ? -50 : 50);
-            }
+    // Chute da IA
+    if (pertoDoGol) {
+      b.ownerTeam = null;
+      b.owner = null;
+      b.vx = -12;
+      b.vy = (GOAL_CENTER_Y - dono.y) * 0.055;
+      return;
+    }
 
-            moveTo(p, tx, ty, 0.7);
-          }
-        });
+    // Passe da IA se estiver pressionada
+    if (pressionado && Math.random() < 0.05) {
+      const alvoIndex = escolherPasseIA(b.owner);
+      const alvo = game.current.away[alvoIndex];
+
+      b.ownerTeam = null;
+      b.owner = null;
+      b.vx = (alvo.x - dono.x) * 0.105;
+      b.vy = (alvo.y - dono.y) * 0.105;
+      return;
+    }
+
+    // Avança em direção ao gol
+    moveTo(dono, 80, GOAL_CENTER_Y, dono.speed + 0.4);
+
+    // Companheiros se movimentam para receber
+    game.current.away.forEach((ia, i) => {
+      if (i === b.owner) return;
+
+      let tx = ia.baseX;
+      let ty = ia.baseY;
+
+      if (ia.role === "ATA") {
+        tx = Math.max(90, dono.x - 140);
+        ty = dono.y < HEIGHT / 2 ? 315 : 135;
       }
 
-      game.current.away.forEach(limitarCampo);
+      if (ia.role === "MEI") {
+        tx = Math.max(160, dono.x - 90);
+        ty = dono.y < HEIGHT / 2 ? 260 : 190;
+      }
+
+      if (ia.role === "DEF") {
+        tx = Math.min(650, dono.x + 120);
+        ty = ia.baseY;
+      }
+
+      moveTo(ia, tx, ty, 0.9);
+    });
+
+    game.current.away.forEach(limitarCampo);
+    return;
+  }
+
+  // Bola livre: IA tenta dominar
+  if (!b.ownerTeam) {
+    let maisPerto = game.current.away[0];
+
+    game.current.away.forEach((ia) => {
+      if (distance(ia, b) < distance(maisPerto, b)) {
+        maisPerto = ia;
+      }
+    });
+
+    moveTo(maisPerto, b.x, b.y, maisPerto.speed + 0.5);
+
+    if (distance(maisPerto, b) < maisPerto.r + b.r + 8) {
+      b.ownerTeam = "away";
+      b.owner = game.current.away.indexOf(maisPerto);
+      b.vx = 0;
+      b.vy = 0;
     }
+
+    game.current.away.forEach((ia) => {
+      if (ia !== maisPerto) {
+        moveTo(ia, ia.baseX, ia.baseY, 0.65);
+      }
+    });
+  }
+
+  game.current.away.forEach(limitarCampo);
+}
 
     function registrarFrameReplay() {
       const frame = {
