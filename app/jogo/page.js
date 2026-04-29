@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const WIDTH = 800;
-const HEIGHT = 450;
-const GOAL_TOP = 175;
-const GOAL_BOTTOM = 275;
+const WIDTH = 1000;
+const HEIGHT = 560;
+const GOAL_TOP = 220;
+const GOAL_BOTTOM = 340;
 const GOAL_CENTER_Y = (GOAL_TOP + GOAL_BOTTOM) / 2;
 
 function JogoContent() {
@@ -106,11 +106,11 @@ function JogoContent() {
 
   function criarJogadores() {
     game.current.home = [
-      { nome: "Goleiro", x: 90, y: 225, baseX: 90, baseY: 225, r: 12, speed: 3.2, role: "GK" },
-      { nome: "Zagueiro", x: 210, y: 120, baseX: 210, baseY: 120, r: 12, speed: 3.3, role: "DEF" },
-      { nome: "Lateral", x: 210, y: 330, baseX: 210, baseY: 330, r: 12, speed: 3.3, role: "DEF" },
-      { nome: "Meia", x: 360, y: 170, baseX: 360, baseY: 170, r: 12, speed: 3.5, role: "MEI" },
-      { nome: "Atacante", x: 430, y: 280, baseX: 430, baseY: 280, r: 12, speed: 3.8, role: "ATA" },
+      { nome: "Goleiro", x: 90, y: 225, baseX: 90, baseY: 225, r: 12, speed: 2.0, role: "GK" },
+      { nome: "Zagueiro", x: 210, y: 120, baseX: 210, baseY: 120, r: 12, speed: 2.0, role: "DEF" },
+      { nome: "Lateral", x: 210, y: 330, baseX: 210, baseY: 330, r: 12, speed: 2.0, role: "DEF" },
+      { nome: "Meia", x: 360, y: 170, baseX: 360, baseY: 170, r: 12, speed: 2.0, role: "MEI" },
+      { nome: "Atacante", x: 430, y: 280, baseX: 430, baseY: 280, r: 12, speed: 2.6, role: "ATA" },
     ];
 
     game.current.away = [
@@ -136,7 +136,7 @@ function JogoContent() {
     };
 
     replayFrames.current = [];
-    replayIndex.current = 0;
+    replayIndex.current = 0.35;
     pausadoPorGol.current = false;
 
     setMensagemGol("");
@@ -653,7 +653,7 @@ function inteligenciaIA() {
 
       setTimeout(() => {
         resetarCampo();
-      }, 6000);
+      }, 10000);
     }
 
     function moverBolaLivre() {
@@ -788,7 +788,7 @@ function inteligenciaIA() {
     }
 
     function loop() {
-      if (pausadoPorGol.current && replayFrames.current.length > 0) {
+      if (pausadoPorGol.current && replayFrames.current.length > 300) {
         const frame = replayFrames.current[replayIndex.current];
 
         if (frame) {
@@ -936,8 +936,8 @@ function inteligenciaIA() {
 
             <canvas
               ref={canvasRef}
-              width={800}
-              height={450}
+              width={1000}
+              height={560}
               className="w-full bg-green-700 rounded-2xl border border-zinc-700"
             />
           </>
