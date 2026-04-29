@@ -7,8 +7,8 @@ import { supabase } from "@/lib/supabase";
 
 const WIDTH = 1920;
 const HEIGHT = 1080;
-const GOAL_TOP = 220;
-const GOAL_BOTTOM = 340;
+const GOAL_TOP = HEIGHT / 2 - HEIGHT * 0.06;
+const GOAL_BOTTOM = HEIGHT / 2 + HEIGHT * 0.06;
 const GOAL_CENTER_Y = (GOAL_TOP + GOAL_BOTTOM) / 2;
 
 function JogoContent() {
@@ -696,30 +696,56 @@ function inteligenciaIA() {
     }
 
     function drawField() {
-      ctx.fillStyle = "#15803d";
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillStyle = "#15803d";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 3;
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 3;
 
-      ctx.strokeRect(20, 20, 760, 410);
+  const margem = 25;
+  const campoW = WIDTH - margem * 2;
+  const campoH = HEIGHT - margem * 2;
+  const meioX = WIDTH / 2;
+  const meioY = HEIGHT / 2;
 
-      ctx.beginPath();
-      ctx.moveTo(400, 20);
-      ctx.lineTo(400, 430);
-      ctx.stroke();
+  // linhas externas
+  ctx.strokeRect(margem, margem, campoW, campoH);
 
-      ctx.beginPath();
-      ctx.arc(400, 225, 60, 0, Math.PI * 2);
-      ctx.stroke();
+  // linha do meio
+  ctx.beginPath();
+  ctx.moveTo(meioX, margem);
+  ctx.lineTo(meioX, HEIGHT - margem);
+  ctx.stroke();
 
-      ctx.strokeRect(20, 155, 90, 140);
-      ctx.strokeRect(690, 155, 90, 140);
+  // círculo central
+  ctx.beginPath();
+  ctx.arc(meioX, meioY, HEIGHT * 0.13, 0, Math.PI * 2);
+  ctx.stroke();
 
-      ctx.fillStyle = "#111827";
-      ctx.fillRect(0, GOAL_TOP, 12, GOAL_BOTTOM - GOAL_TOP);
-      ctx.fillRect(WIDTH - 12, GOAL_TOP, 12, GOAL_BOTTOM - GOAL_TOP);
-    }
+  // áreas
+  const areaW = WIDTH * 0.12;
+  const areaH = HEIGHT * 0.28;
+  const areaY = meioY - areaH / 2;
+
+  ctx.strokeRect(margem, areaY, areaW, areaH);
+  ctx.strokeRect(WIDTH - margem - areaW, areaY, areaW, areaH);
+
+  // pequenas áreas
+  const pequenaAreaW = WIDTH * 0.055;
+  const pequenaAreaH = HEIGHT * 0.15;
+  const pequenaAreaY = meioY - pequenaAreaH / 2;
+
+  ctx.strokeRect(margem, pequenaAreaY, pequenaAreaW, pequenaAreaH);
+  ctx.strokeRect(WIDTH - margem - pequenaAreaW, pequenaAreaY, pequenaAreaW, pequenaAreaH);
+
+  // gols
+  const golH = HEIGHT * 0.12;
+  const golY = meioY - golH / 2;
+
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(0, golY, margem, golH);
+  ctx.fillRect(WIDTH - margem, golY, margem, golH);
+}
 
     function drawPlayer(obj, color, selected = false) {
       ctx.beginPath();
