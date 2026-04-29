@@ -52,6 +52,21 @@ function JogoContent() {
   const nomeFora =
     times.find((t) => String(t.id) === String(timeFora))?.nome || "IA";
 
+  function escudoTime(nome) {
+    const escudos = {
+      Corinthians: "/escudos/corinthians.png",
+      Palmeiras: "/escudos/palmeiras.png",
+      "São Paulo": "/escudos/sao-paulo.png",
+      Santos: "/escudos/santos.png",
+      Flamengo: "/escudos/flamengo.png",
+      Vasco: "/escudos/vasco.png",
+      Grêmio: "/escudos/gremio.png",
+      Internacional: "/escudos/internacional.png",
+    };
+
+    return escudos[nome] || "/escudos/default.png";
+  }
+
   async function carregarTimes() {
     const { data } = await supabase.from("times").select("*").order("nome");
 
@@ -233,8 +248,6 @@ function JogoContent() {
       const p = game.current.home[controlado];
       if (!p) return;
 
-      // CONTROLES NOVOS
-      // W = cima | A = esquerda | S = baixo | D = direita
       if (keys.current["w"]) p.y -= p.speed;
       if (keys.current["s"]) p.y += p.speed;
       if (keys.current["a"]) p.x -= p.speed;
@@ -285,7 +298,6 @@ function JogoContent() {
       const alvoIndex = escolherCompanheiroParaPasse(donoIndex);
       const alvo = game.current.home[alvoIndex];
 
-      // troca automaticamente para quem vai receber o passe
       setControlado(alvoIndex);
 
       b.ownerTeam = null;
@@ -306,8 +318,6 @@ function JogoContent() {
 
       const dono = game.current.home[b.owner];
 
-      // chute corrigido:
-      // agora chuta forte para o gol inimigo mesmo estando no campo adversário
       b.ownerTeam = null;
       b.owner = null;
       b.vx = 12;
@@ -390,7 +400,6 @@ function JogoContent() {
         b.vy *= -1;
       }
 
-      // Gol da IA no lado esquerdo
       if (b.x <= 0) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
           setPlacar((p) => ({ ...p, fora: p.fora + 1 }));
@@ -401,7 +410,6 @@ function JogoContent() {
         }
       }
 
-      // Gol do jogador no lado direito
       if (b.x >= WIDTH) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
           setPlacar((p) => ({ ...p, casa: p.casa + 1 }));
@@ -416,13 +424,8 @@ function JogoContent() {
     }
 
     function comandos() {
-      // H = toca a bola
       if (keys.current["h"]) passarBola();
-
-      // J = chuta a bola para o gol
       if (keys.current["j"]) chutarBola();
-
-      // K = rouba a bola
       if (keys.current["k"]) tentarRoubar();
     }
 
@@ -597,10 +600,26 @@ function JogoContent() {
 
         {jogoIniciado && (
           <>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4 flex justify-between text-xl font-bold">
-              <span>{nomeCasa}: {placar.casa}</span>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4 flex justify-between items-center text-xl font-bold">
+              <span className="flex items-center gap-3">
+                <img
+                  src={escudoTime(nomeCasa)}
+                  alt={nomeCasa}
+                  className="w-9 h-9 object-contain"
+                />
+                {nomeCasa}: {placar.casa}
+              </span>
+
               <span>Tempo: {tempo}s</span>
-              <span>{nomeFora}: {placar.fora}</span>
+
+              <span className="flex items-center gap-3">
+                {nomeFora}: {placar.fora}
+                <img
+                  src={escudoTime(nomeFora)}
+                  alt={nomeFora}
+                  className="w-9 h-9 object-contain"
+                />
+              </span>
             </div>
 
             <canvas
@@ -616,8 +635,18 @@ function JogoContent() {
           <div className="mt-5 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-center">
             <h2 className="text-2xl font-bold mb-2">Fim de jogo!</h2>
 
-            <p className="mb-4">
-              Placar final: {nomeCasa} {placar.casa} x {placar.fora} {nomeFora}
+            <p className="mb-4 flex justify-center items-center gap-3">
+              <img
+                src={escudoTime(nomeCasa)}
+                alt={nomeCasa}
+                className="w-8 h-8 object-contain"
+              />
+              {nomeCasa} {placar.casa} x {placar.fora} {nomeFora}
+              <img
+                src={escudoTime(nomeFora)}
+                alt={nomeFora}
+                className="w-8 h-8 object-contain"
+              />
             </p>
 
             {modo !== "copa" && (

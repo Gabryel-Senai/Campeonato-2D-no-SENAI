@@ -12,6 +12,22 @@ export default function CopaPage() {
   const [campeao, setCampeao] = useState(null);
   const [eliminado, setEliminado] = useState(false);
 
+  // 🔥 ESCUDOS
+  function escudoTime(nome) {
+    const escudos = {
+      Corinthians: "/escudos/corinthians.png",
+      Palmeiras: "/escudos/palmeiras.png",
+      "São Paulo": "/escudos/sao-paulo.png",
+      Santos: "/escudos/santos.png",
+      Flamengo: "/escudos/flamengo.png",
+      Vasco: "/escudos/vasco.png",
+      Grêmio: "/escudos/gremio.png",
+      Internacional: "/escudos/internacional.png",
+    };
+
+    return escudos[nome] || "/escudos/default.png";
+  }
+
   async function carregarTimes() {
     const { data } = await supabase.from("times").select("*").order("nome");
 
@@ -26,6 +42,7 @@ export default function CopaPage() {
     carregarTimes();
   }, []);
 
+  // 🔥 RECUPERA COPA
   useEffect(() => {
     const copaSalva = localStorage.getItem("copaAtual");
 
@@ -40,6 +57,7 @@ export default function CopaPage() {
     }
   }, []);
 
+  // 🔥 SALVA COPA
   useEffect(() => {
     if (fase === "Escolha seu time") return;
 
@@ -55,10 +73,12 @@ export default function CopaPage() {
     );
   }, [meuTime, fase, confrontos, campeao, eliminado]);
 
+  // 🔥 RECEBE RESULTADO DO JOGO
   useEffect(() => {
     const resultadoSalvo = localStorage.getItem("resultadoCopa");
 
-    if (!resultadoSalvo || times.length === 0 || confrontos.length === 0) return;
+    if (!resultadoSalvo || times.length === 0 || confrontos.length === 0)
+      return;
 
     const resultado = JSON.parse(resultadoSalvo);
 
@@ -70,9 +90,13 @@ export default function CopaPage() {
       if (!jogoCerto) return jogo;
 
       const vencedorId =
-        resultado.golsA > resultado.golsB ? resultado.timeA : resultado.timeB;
+        resultado.golsA > resultado.golsB
+          ? resultado.timeA
+          : resultado.timeB;
 
-      const vencedor = times.find((t) => String(t.id) === String(vencedorId));
+      const vencedor = times.find(
+        (t) => String(t.id) === String(vencedorId)
+      );
 
       return {
         ...jogo,
@@ -161,20 +185,24 @@ export default function CopaPage() {
       if (jogo.vencedor) return jogo;
 
       if (ehMeuTime && !eliminado) {
-        alert("Você precisa jogar sua partida no 2D primeiro.");
+        alert("Jogue sua partida no modo 2D.");
         return jogo;
       }
 
       return simularJogo(jogo);
     });
 
-    const todosFinalizados = jogosAtualizados.every((jogo) => jogo.vencedor);
+    const todosFinalizados = jogosAtualizados.every(
+      (jogo) => jogo.vencedor
+    );
 
     setConfrontos(jogosAtualizados);
 
     if (!todosFinalizados) return;
 
-    const classificados = jogosAtualizados.map((jogo) => jogo.vencedor);
+    const classificados = jogosAtualizados.map(
+      (jogo) => jogo.vencedor
+    );
 
     const usuarioContinua = classificados.some(
       (time) => String(time.id) === String(meuTime)
@@ -209,23 +237,15 @@ export default function CopaPage() {
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-6">
       <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Copa Mata-Mata</h1>
-            <p className="text-zinc-400">
-              Escolha um time e jogue as partidas do seu clube no 2D.
-            </p>
-          </div>
-
-          <Link href="/" className="text-blue-400 hover:underline">
+        <div className="flex justify-between mb-6">
+          <h1 className="text-3xl font-bold">Copa Mata-Mata</h1>
+          <Link href="/" className="text-blue-400">
             Voltar
           </Link>
         </div>
 
         {fase === "Escolha seu time" && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-            <h2 className="text-2xl font-bold mb-5">Escolha seu time</h2>
-
+          <div className="bg-zinc-900 p-8 rounded-3xl">
             <select
               value={meuTime}
               onChange={(e) => setMeuTime(e.target.value)}
@@ -240,7 +260,7 @@ export default function CopaPage() {
 
             <button
               onClick={iniciarCopa}
-              className="w-full bg-purple-600 hover:bg-purple-700 py-4 rounded-xl font-bold text-lg"
+              className="w-full bg-purple-600 py-4 rounded-xl font-bold"
             >
               Iniciar Copa
             </button>
@@ -249,21 +269,7 @@ export default function CopaPage() {
 
         {fase !== "Escolha seu time" && (
           <>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 mb-6">
-              <h2 className="text-2xl font-bold">{fase}</h2>
-
-              {eliminado && !campeao && (
-                <p className="text-red-400 mt-2">
-                  Seu time foi eliminado. Agora os outros jogos serão simulados.
-                </p>
-              )}
-
-              {campeao && (
-                <p className="text-yellow-400 mt-2 text-xl font-bold">
-                  Campeão: {campeao.nome}
-                </p>
-              )}
-            </div>
+            <h2 className="text-2xl mb-4">{fase}</h2>
 
             <div className="grid gap-4 mb-6">
               {confrontos.map((jogo, index) => {
@@ -274,51 +280,55 @@ export default function CopaPage() {
                 return (
                   <div
                     key={index}
-                    className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5"
+                    className="bg-zinc-900 p-5 rounded-2xl flex justify-between items-center"
                   >
-                    <div className="flex justify-between items-center gap-3">
-                      <span>{jogo.timeA.nome}</span>
+                    {/* TIME A */}
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={escudoTime(jogo.timeA.nome)}
+                        className="w-8 h-8"
+                      />
+                      {jogo.timeA.nome}
+                    </div>
 
-                      <strong className="text-xl">
-                        {jogo.golsA === null
-                          ? "x"
-                          : `${jogo.golsA} x ${jogo.golsB}`}
-                      </strong>
+                    <strong>
+                      {jogo.golsA === null
+                        ? "x"
+                        : `${jogo.golsA} x ${jogo.golsB}`}
+                    </strong>
 
-                      <span>{jogo.timeB.nome}</span>
+                    {/* TIME B */}
+                    <div className="flex items-center gap-3">
+                      {jogo.timeB.nome}
+                      <img
+                        src={escudoTime(jogo.timeB.nome)}
+                        className="w-8 h-8"
+                      />
                     </div>
 
                     {ehMeuTime && jogo.golsA === null && !eliminado && (
                       <Link
-                        href={`/jogo?modo=copa&timeA=${jogo.timeA.id}&timeB=${jogo.timeB.id}&meuTime=${meuTime}`}
-                        className="block mt-4 text-center bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-bold"
+                        href={`/jogo?modo=copa&timeA=${jogo.timeA.id}&timeB=${jogo.timeB.id}`}
+                        className="bg-purple-600 px-4 py-2 rounded-xl"
                       >
-                        Jogar Partida 2D
+                        Jogar
                       </Link>
-                    )}
-
-                    {jogo.vencedor && (
-                      <p className="text-green-400 text-center mt-3">
-                        Classificado: {jogo.vencedor.nome}
-                      </p>
                     )}
                   </div>
                 );
               })}
             </div>
 
-            {!campeao && (
-              <button
-                onClick={jogarRodada}
-                className="w-full bg-green-600 hover:bg-green-700 py-4 rounded-xl font-bold text-lg"
-              >
-                Avançar Rodada
-              </button>
-            )}
+            <button
+              onClick={jogarRodada}
+              className="w-full bg-green-600 py-4 rounded-xl font-bold"
+            >
+              Avançar Rodada
+            </button>
 
             <button
               onClick={novaCopa}
-              className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-xl font-bold text-lg"
+              className="w-full mt-3 bg-zinc-800 py-4 rounded-xl"
             >
               Nova Copa
             </button>
