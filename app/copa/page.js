@@ -12,7 +12,6 @@ export default function CopaPage() {
   const [campeao, setCampeao] = useState(null);
   const [eliminado, setEliminado] = useState(false);
 
-  // 🔥 ESCUDOS
   function escudoTime(nome) {
     const escudos = {
       Corinthians: "/escudos/corinthians.png",
@@ -30,7 +29,6 @@ export default function CopaPage() {
 
   async function carregarTimes() {
     const { data } = await supabase.from("times").select("*").order("nome");
-
     setTimes(data || []);
 
     if (data?.length > 0) {
@@ -42,13 +40,11 @@ export default function CopaPage() {
     carregarTimes();
   }, []);
 
-  // 🔥 RECUPERA COPA
   useEffect(() => {
     const copaSalva = localStorage.getItem("copaAtual");
 
     if (copaSalva) {
       const data = JSON.parse(copaSalva);
-
       setMeuTime(data.meuTime);
       setFase(data.fase);
       setConfrontos(data.confrontos);
@@ -57,7 +53,6 @@ export default function CopaPage() {
     }
   }, []);
 
-  // 🔥 SALVA COPA
   useEffect(() => {
     if (fase === "Escolha seu time") return;
 
@@ -73,12 +68,10 @@ export default function CopaPage() {
     );
   }, [meuTime, fase, confrontos, campeao, eliminado]);
 
-  // 🔥 RECEBE RESULTADO DO JOGO
   useEffect(() => {
     const resultadoSalvo = localStorage.getItem("resultadoCopa");
 
-    if (!resultadoSalvo || times.length === 0 || confrontos.length === 0)
-      return;
+    if (!resultadoSalvo || times.length === 0 || confrontos.length === 0) return;
 
     const resultado = JSON.parse(resultadoSalvo);
 
@@ -90,13 +83,9 @@ export default function CopaPage() {
       if (!jogoCerto) return jogo;
 
       const vencedorId =
-        resultado.golsA > resultado.golsB
-          ? resultado.timeA
-          : resultado.timeB;
+        resultado.golsA > resultado.golsB ? resultado.timeA : resultado.timeB;
 
-      const vencedor = times.find(
-        (t) => String(t.id) === String(vencedorId)
-      );
+      const vencedor = times.find((t) => String(t.id) === String(vencedorId));
 
       return {
         ...jogo,
@@ -192,17 +181,13 @@ export default function CopaPage() {
       return simularJogo(jogo);
     });
 
-    const todosFinalizados = jogosAtualizados.every(
-      (jogo) => jogo.vencedor
-    );
+    const todosFinalizados = jogosAtualizados.every((jogo) => jogo.vencedor);
 
     setConfrontos(jogosAtualizados);
 
     if (!todosFinalizados) return;
 
-    const classificados = jogosAtualizados.map(
-      (jogo) => jogo.vencedor
-    );
+    const classificados = jogosAtualizados.map((jogo) => jogo.vencedor);
 
     const usuarioContinua = classificados.some(
       (time) => String(time.id) === String(meuTime)
@@ -239,6 +224,7 @@ export default function CopaPage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between mb-6">
           <h1 className="text-3xl font-bold">Copa Mata-Mata</h1>
+
           <Link href="/" className="text-blue-400">
             Voltar
           </Link>
@@ -271,6 +257,18 @@ export default function CopaPage() {
           <>
             <h2 className="text-2xl mb-4">{fase}</h2>
 
+            {eliminado && !campeao && (
+              <p className="text-red-400 mb-4">
+                Seu time foi eliminado. Agora os outros jogos serão simulados.
+              </p>
+            )}
+
+            {campeao && (
+              <p className="text-yellow-400 text-xl font-bold mb-4">
+                Campeão: {campeao.nome}
+              </p>
+            )}
+
             <div className="grid gap-4 mb-6">
               {confrontos.map((jogo, index) => {
                 const ehMeuTime =
@@ -280,51 +278,55 @@ export default function CopaPage() {
                 return (
                   <div
                     key={index}
-                    className="bg-zinc-900 p-5 rounded-2xl flex justify-between items-center"
+                    className="bg-zinc-900 p-5 rounded-2xl grid grid-cols-[1fr_80px_1fr_90px] items-center gap-4"
                   >
-                    {/* TIME A */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <img
                         src={escudoTime(jogo.timeA.nome)}
-                        className="w-8 h-8"
+                        alt={jogo.timeA.nome}
+                        className="w-8 h-8 object-contain shrink-0"
                       />
-                      {jogo.timeA.nome}
+                      <span className="truncate">{jogo.timeA.nome}</span>
                     </div>
 
-                    <strong>
+                    <strong className="text-center">
                       {jogo.golsA === null
                         ? "x"
                         : `${jogo.golsA} x ${jogo.golsB}`}
                     </strong>
 
-                    {/* TIME B */}
-                    <div className="flex items-center gap-3">
-                      {jogo.timeB.nome}
+                    <div className="flex items-center justify-end gap-3 min-w-0">
+                      <span className="truncate">{jogo.timeB.nome}</span>
                       <img
                         src={escudoTime(jogo.timeB.nome)}
-                        className="w-8 h-8"
+                        alt={jogo.timeB.nome}
+                        className="w-8 h-8 object-contain shrink-0"
                       />
                     </div>
 
-                    {ehMeuTime && jogo.golsA === null && !eliminado && (
-                      <Link
-                        href={`/jogo?modo=copa&timeA=${jogo.timeA.id}&timeB=${jogo.timeB.id}`}
-                        className="bg-purple-600 px-4 py-2 rounded-xl"
-                      >
-                        Jogar
-                      </Link>
-                    )}
+                    <div className="flex justify-end">
+                      {ehMeuTime && jogo.golsA === null && !eliminado && (
+                        <Link
+                          href={`/jogo?modo=copa&timeA=${jogo.timeA.id}&timeB=${jogo.timeB.id}`}
+                          className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl font-semibold"
+                        >
+                          Jogar
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
 
-            <button
-              onClick={jogarRodada}
-              className="w-full bg-green-600 py-4 rounded-xl font-bold"
-            >
-              Avançar Rodada
-            </button>
+            {!campeao && (
+              <button
+                onClick={jogarRodada}
+                className="w-full bg-green-600 py-4 rounded-xl font-bold"
+              >
+                Avançar Rodada
+              </button>
+            )}
 
             <button
               onClick={novaCopa}
