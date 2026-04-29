@@ -22,6 +22,9 @@ function JogoContent() {
   const keys = useRef({});
   const animationRef = useRef(null);
   const lastAction = useRef(0);
+  const replayFrames = useRef([]);
+  const replayIndex = useRef(0);
+  const pausadoPorGol = useRef(false);
 
   const [times, setTimes] = useState([]);
   const [timeCasa, setTimeCasa] = useState("");
@@ -31,6 +34,8 @@ function JogoContent() {
   const [tempo, setTempo] = useState(90);
   const [fim, setFim] = useState(false);
   const [controlado, setControlado] = useState(0);
+  const [mensagemGol, setMensagemGol] = useState("");
+  const [emReplay, setEmReplay] = useState(false);
 
   const game = useRef({
     ball: {
@@ -65,6 +70,12 @@ function JogoContent() {
     };
 
     return escudos[nome] || "/escudos/default.png";
+  }
+
+  function tocarAudioGol() {
+    const audio = new Audio("/audio/gol.mp3");
+    audio.volume = 0.8;
+    audio.play().catch(() => {});
   }
 
   async function carregarTimes() {
@@ -123,6 +134,12 @@ function JogoContent() {
       ownerTeam: null,
       owner: null,
     };
+
+    replayFrames.current = [];
+    replayIndex.current = 0;
+    pausadoPorGol.current = false;
+    setMensagemGol("");
+    setEmReplay(false);
   }
 
   function iniciarJogo() {
@@ -157,7 +174,7 @@ function JogoContent() {
   }, []);
 
   useEffect(() => {
-    if (!jogoIniciado || fim) return;
+    if (!jogoIniciado || fim || mensagemGol) return;
 
     const timer = setInterval(() => {
       setTempo((t) => {
@@ -171,7 +188,7 @@ function JogoContent() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [jogoIniciado, fim]);
+  }, [jogoIniciado, fim, mensagemGol]);
 
   useEffect(() => {
     if (!jogoIniciado) return;
@@ -382,6 +399,41 @@ function JogoContent() {
       game.current.away.forEach(limitarCampo);
     }
 
+    function registrarFrameReplay() {
+      const frame = {
+        ball: { ...game.current.ball },
+        home: game.current.home.map((p) => ({ ...p })),
+        away: game.current.away.map((p) => ({ ...p })),
+      };
+
+      replayFrames.current.push(frame);
+
+      if (replayFrames.current.length > 180) {
+        replayFrames.current.shift();
+      }
+    }
+
+    function iniciarReplayGol(tipo) {
+      if (pausadoPorGol.current) return;
+
+      pausadoPorGol.current = true;
+      replayIndex.current = 0;
+
+      setMensagemGol(tipo === "casa" ? "GOOOOOOL!" : "GOL DA IA!");
+      setEmReplay(true);
+      tocarAudioGol();
+
+      if (tipo === "casa") {
+        setPlacar((p) => ({ ...p, casa: p.casa + 1 }));
+      } else {
+        setPlacar((p) => ({ ...p, fora: p.fora + 1 }));
+      }
+
+      setTimeout(() => {
+        resetarCampo();
+      }, 6000);
+    }
+
     function moverBolaLivre() {
       const b = game.current.ball;
 
@@ -402,8 +454,7 @@ function JogoContent() {
 
       if (b.x <= 0) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
-          setPlacar((p) => ({ ...p, fora: p.fora + 1 }));
-          resetarCampo();
+          iniciarReplayGol("fora");
         } else {
           b.x = 25;
           b.vx *= -0.6;
@@ -412,8 +463,7 @@ function JogoContent() {
 
       if (b.x >= WIDTH) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
-          setPlacar((p) => ({ ...p, casa: p.casa + 1 }));
-          resetarCampo();
+          iniciarReplayGol("casa");
         } else {
           b.x = WIDTH - 25;
           b.vx *= -0.6;
@@ -475,26 +525,39 @@ function JogoContent() {
       ctx.fillText(obj.nome, obj.x, obj.y - 18);
     }
 
-    function drawBall() {
-      const b = game.current.ball;
-
+    function drawBall(ball = game.current.ball) {
       ctx.beginPath();
       ctx.fillStyle = "white";
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = "#111";
       ctx.stroke();
     }
 
-    function loop() {
-      if (!fim) {
-        movePlayer();
-        inteligenciaIA();
-        comandos();
-        moverBolaLivre();
-      }
+    function drawFrame(frame) {
+      drawField();
 
+      frame.home.forEach((p, i) => {
+        drawPlayer(p, "#2563eb", i === controlado);
+      });
+
+      frame.away.forEach((p) => {
+        drawPlayer(p, "#dc2626");
+      });
+
+      drawBall(frame.ball);
+
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, 0, WIDTH, 55);
+
+      ctx.fillStyle = "#facc15";
+      ctx.font = "bold 26px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("REPLAY DO GOL", WIDTH / 2, 36);
+    }
+
+    function drawAtual() {
       drawField();
 
       game.current.home.forEach((p, i) => {
@@ -506,6 +569,32 @@ function JogoContent() {
       });
 
       drawBall();
+    }
+
+    function loop() {
+      if (pausadoPorGol.current && replayFrames.current.length > 0) {
+        const frame = replayFrames.current[replayIndex.current];
+
+        if (frame) {
+          drawFrame(frame);
+          replayIndex.current += 1;
+        } else {
+          replayIndex.current = 0;
+        }
+
+        animationRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      if (!fim) {
+        movePlayer();
+        inteligenciaIA();
+        comandos();
+        moverBolaLivre();
+        registrarFrameReplay();
+      }
+
+      drawAtual();
 
       if (fim && modo === "copa") {
         if (!window._voltandoParaCopa) {
@@ -621,6 +710,12 @@ function JogoContent() {
                 />
               </span>
             </div>
+
+            {mensagemGol && (
+              <div className="mb-4 bg-yellow-500 text-zinc-950 text-center text-4xl font-black rounded-2xl py-6 animate-pulse">
+                {mensagemGol} {emReplay ? "• REPLAY" : ""}
+              </div>
+            )}
 
             <canvas
               ref={canvasRef}
