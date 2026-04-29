@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -9,14 +9,14 @@ const WIDTH = 800;
 const HEIGHT = 450;
 const GOAL_TOP = 175;
 const GOAL_BOTTOM = 275;
+const GOAL_CENTER_Y = (GOAL_TOP + GOAL_BOTTOM) / 2;
 
-export default function JogoPage() {
+function JogoContent() {
   const searchParams = useSearchParams();
 
   const modo = searchParams.get("modo");
   const timeAParam = searchParams.get("timeA");
   const timeBParam = searchParams.get("timeB");
-  const meuTimeParam = searchParams.get("meuTime");
 
   const canvasRef = useRef(null);
   const keys = useRef({});
@@ -33,7 +33,15 @@ export default function JogoPage() {
   const [controlado, setControlado] = useState(0);
 
   const game = useRef({
-    ball: { x: 400, y: 225, r: 7, vx: 0, vy: 0, ownerTeam: null, owner: null },
+    ball: {
+      x: 400,
+      y: 225,
+      r: 7,
+      vx: 0,
+      vy: 0,
+      ownerTeam: null,
+      owner: null,
+    },
     home: [],
     away: [],
   });
@@ -46,12 +54,17 @@ export default function JogoPage() {
 
   async function carregarTimes() {
     const { data } = await supabase.from("times").select("*").order("nome");
+
     setTimes(data || []);
 
     if (modo === "copa" && timeAParam && timeBParam) {
       setTimeCasa(timeAParam);
       setTimeFora(timeBParam);
-      setTimeout(() => iniciarJogo(), 300);
+
+      setTimeout(() => {
+        iniciarJogo();
+      }, 300);
+
       return;
     }
 
@@ -71,20 +84,21 @@ export default function JogoPage() {
       { nome: "Zagueiro", x: 210, y: 120, baseX: 210, baseY: 120, r: 12, speed: 3.3 },
       { nome: "Lateral", x: 210, y: 330, baseX: 210, baseY: 330, r: 12, speed: 3.3 },
       { nome: "Meia", x: 360, y: 170, baseX: 360, baseY: 170, r: 12, speed: 3.5 },
-      { nome: "Atacante", x: 420, y: 280, baseX: 420, baseY: 280, r: 12, speed: 3.7 },
+      { nome: "Atacante", x: 430, y: 280, baseX: 430, baseY: 280, r: 12, speed: 3.8 },
     ];
 
     game.current.away = [
-      { nome: "Goleiro IA", x: 710, y: 225, baseX: 710, baseY: 225, r: 12, speed: 1.9 },
-      { nome: "Zagueiro IA", x: 590, y: 120, baseX: 590, baseY: 120, r: 12, speed: 1.9 },
-      { nome: "Lateral IA", x: 590, y: 330, baseX: 590, baseY: 330, r: 12, speed: 1.9 },
-      { nome: "Meia IA", x: 440, y: 170, baseX: 440, baseY: 170, r: 12, speed: 1.9 },
-      { nome: "Atacante IA", x: 390, y: 280, baseX: 390, baseY: 280, r: 12, speed: 2.1 },
+      { nome: "Goleiro IA", x: 710, y: 225, baseX: 710, baseY: 225, r: 12, speed: 2.0 },
+      { nome: "Zagueiro IA", x: 590, y: 120, baseX: 590, baseY: 120, r: 12, speed: 2.0 },
+      { nome: "Lateral IA", x: 590, y: 330, baseX: 590, baseY: 330, r: 12, speed: 2.0 },
+      { nome: "Meia IA", x: 440, y: 170, baseX: 440, baseY: 170, r: 12, speed: 2.2 },
+      { nome: "Atacante IA", x: 390, y: 280, baseX: 390, baseY: 280, r: 12, speed: 2.4 },
     ];
   }
 
   function resetarCampo() {
     criarJogadores();
+
     game.current.ball = {
       x: 400,
       y: 225,
@@ -99,6 +113,8 @@ export default function JogoPage() {
   function iniciarJogo() {
     if (timeCasa === timeFora) return;
 
+    window._voltandoParaCopa = false;
+
     setPlacar({ casa: 0, fora: 0 });
     setTempo(90);
     setFim(false);
@@ -109,11 +125,6 @@ export default function JogoPage() {
 
   useEffect(() => {
     function down(e) {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        setControlado((n) => (n + 1) % 5);
-      }
-
       keys.current[e.key.toLowerCase()] = true;
     }
 
@@ -178,12 +189,16 @@ export default function JogoPage() {
 
       if (b.ownerTeam === "home") {
         const dono = game.current.home[b.owner];
+        if (!dono) return;
+
         b.x = dono.x + 15;
         b.y = dono.y;
       }
 
       if (b.ownerTeam === "away") {
         const dono = game.current.away[b.owner];
+        if (!dono) return;
+
         b.x = dono.x - 15;
         b.y = dono.y;
       }
@@ -191,6 +206,7 @@ export default function JogoPage() {
 
     function dominarBola() {
       const b = game.current.ball;
+
       if (b.ownerTeam) return;
 
       game.current.home.forEach((p, i) => {
@@ -199,6 +215,7 @@ export default function JogoPage() {
           b.owner = i;
           b.vx = 0;
           b.vy = 0;
+          setControlado(i);
         }
       });
 
@@ -216,64 +233,101 @@ export default function JogoPage() {
       const p = game.current.home[controlado];
       if (!p) return;
 
-      if (keys.current["w"] || keys.current["arrowup"]) p.y -= p.speed;
-      if (keys.current["s"] || keys.current["arrowdown"]) p.y += p.speed;
-      if (keys.current["a"] || keys.current["arrowleft"]) p.x -= p.speed;
-      if (keys.current["d"] || keys.current["arrowright"]) p.x += p.speed;
+      // CONTROLES NOVOS
+      // W = cima | A = esquerda | S = baixo | D = direita
+      if (keys.current["w"]) p.y -= p.speed;
+      if (keys.current["s"]) p.y += p.speed;
+      if (keys.current["a"]) p.x -= p.speed;
+      if (keys.current["d"]) p.x += p.speed;
 
       limitarCampo(p);
 
       game.current.home.forEach((j, i) => {
-        if (i !== controlado) moveTo(j, j.baseX, j.baseY, 0.6);
+        if (i !== controlado) {
+          moveTo(j, j.baseX, j.baseY, 0.55);
+        }
       });
+    }
+
+    function escolherCompanheiroParaPasse(donoIndex) {
+      let alvoIndex = null;
+      let melhorPontuacao = -9999;
+      const dono = game.current.home[donoIndex];
+
+      game.current.home.forEach((p, i) => {
+        if (i === donoIndex) return;
+
+        const avanco = p.x;
+        const distancia = distance(dono, p);
+        const pontuacao = avanco - distancia * 0.25;
+
+        if (pontuacao > melhorPontuacao) {
+          melhorPontuacao = pontuacao;
+          alvoIndex = i;
+        }
+      });
+
+      return alvoIndex ?? 0;
     }
 
     function passarBola() {
       const now = Date.now();
       if (now - lastAction.current < 350) return;
-      lastAction.current = now;
 
       const b = game.current.ball;
+
       if (b.ownerTeam !== "home") return;
 
-      const dono = game.current.home[b.owner];
-      const alvo = game.current.home.find((p, i) => i !== b.owner) || game.current.home[0];
+      lastAction.current = now;
+
+      const donoIndex = b.owner;
+      const dono = game.current.home[donoIndex];
+      const alvoIndex = escolherCompanheiroParaPasse(donoIndex);
+      const alvo = game.current.home[alvoIndex];
+
+      // troca automaticamente para quem vai receber o passe
+      setControlado(alvoIndex);
 
       b.ownerTeam = null;
       b.owner = null;
-      b.vx = (alvo.x - dono.x) * 0.08;
-      b.vy = (alvo.y - dono.y) * 0.08;
+      b.vx = (alvo.x - dono.x) * 0.09;
+      b.vy = (alvo.y - dono.y) * 0.09;
     }
 
     function chutarBola() {
       const now = Date.now();
       if (now - lastAction.current < 350) return;
-      lastAction.current = now;
 
       const b = game.current.ball;
+
       if (b.ownerTeam !== "home") return;
+
+      lastAction.current = now;
 
       const dono = game.current.home[b.owner];
 
+      // chute corrigido:
+      // agora chuta forte para o gol inimigo mesmo estando no campo adversário
       b.ownerTeam = null;
       b.owner = null;
-      b.vx = (WIDTH - dono.x) * 0.035;
-      b.vy = ((GOAL_TOP + GOAL_BOTTOM) / 2 - dono.y) * 0.035;
+      b.vx = 12;
+      b.vy = (GOAL_CENTER_Y - dono.y) * 0.045;
     }
 
     function tentarRoubar() {
       const now = Date.now();
-      if (now - lastAction.current < 350) return;
-      lastAction.current = now;
+      if (now - lastAction.current < 300) return;
 
       const b = game.current.ball;
       const jogador = game.current.home[controlado];
 
       if (b.ownerTeam !== "away") return;
 
+      lastAction.current = now;
+
       const donoIA = game.current.away[b.owner];
 
-      if (distance(jogador, donoIA) < 35) {
+      if (donoIA && distance(jogador, donoIA) < 38) {
         b.ownerTeam = "home";
         b.owner = controlado;
         b.vx = 0;
@@ -286,27 +340,32 @@ export default function JogoPage() {
 
       if (b.ownerTeam === "away") {
         const dono = game.current.away[b.owner];
+        if (!dono) return;
 
-        if (dono.x < 150) {
+        if (dono.x < 170) {
           b.ownerTeam = null;
           b.owner = null;
-          b.vx = -9;
-          b.vy = ((GOAL_TOP + GOAL_BOTTOM) / 2 - dono.y) * 0.04;
+          b.vx = -10;
+          b.vy = (GOAL_CENTER_Y - dono.y) * 0.045;
           return;
         }
 
-        moveTo(dono, 70, 225, dono.speed);
+        moveTo(dono, 80, GOAL_CENTER_Y, dono.speed);
       } else {
         let maisPerto = game.current.away[0];
 
         game.current.away.forEach((p) => {
-          if (distance(p, b) < distance(maisPerto, b)) maisPerto = p;
+          if (distance(p, b) < distance(maisPerto, b)) {
+            maisPerto = p;
+          }
         });
 
         moveTo(maisPerto, b.x, b.y, maisPerto.speed);
 
         game.current.away.forEach((p) => {
-          if (p !== maisPerto) moveTo(p, p.baseX, p.baseY, 0.55);
+          if (p !== maisPerto) {
+            moveTo(p, p.baseX, p.baseY, 0.5);
+          }
         });
       }
 
@@ -323,11 +382,15 @@ export default function JogoPage() {
 
       b.x += b.vx;
       b.y += b.vy;
-      b.vx *= 0.98;
-      b.vy *= 0.98;
 
-      if (b.y < 20 || b.y > HEIGHT - 20) b.vy *= -1;
+      b.vx *= 0.985;
+      b.vy *= 0.985;
 
+      if (b.y < 20 || b.y > HEIGHT - 20) {
+        b.vy *= -1;
+      }
+
+      // Gol da IA no lado esquerdo
       if (b.x <= 0) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
           setPlacar((p) => ({ ...p, fora: p.fora + 1 }));
@@ -338,6 +401,7 @@ export default function JogoPage() {
         }
       }
 
+      // Gol do jogador no lado direito
       if (b.x >= WIDTH) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
           setPlacar((p) => ({ ...p, casa: p.casa + 1 }));
@@ -352,9 +416,14 @@ export default function JogoPage() {
     }
 
     function comandos() {
-      if (keys.current["x"]) passarBola();
-      if (keys.current[" "]) chutarBola();
-      if (keys.current["c"]) tentarRoubar();
+      // H = toca a bola
+      if (keys.current["h"]) passarBola();
+
+      // J = chuta a bola para o gol
+      if (keys.current["j"]) chutarBola();
+
+      // K = rouba a bola
+      if (keys.current["k"]) tentarRoubar();
     }
 
     function drawField() {
@@ -363,6 +432,7 @@ export default function JogoPage() {
 
       ctx.strokeStyle = "white";
       ctx.lineWidth = 3;
+
       ctx.strokeRect(20, 20, 760, 410);
 
       ctx.beginPath();
@@ -469,7 +539,7 @@ export default function JogoPage() {
           <div>
             <h1 className="text-3xl font-bold">Jogo 2D</h1>
             <p className="text-zinc-400">
-              WASD/Setas move • TAB troca jogador • X passa • Espaço chuta • C rouba
+              W cima • A esquerda • S baixo • D direita • H passa • J chuta • K rouba
             </p>
           </div>
 
@@ -545,6 +615,7 @@ export default function JogoPage() {
         {fim && (
           <div className="mt-5 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-center">
             <h2 className="text-2xl font-bold mb-2">Fim de jogo!</h2>
+
             <p className="mb-4">
               Placar final: {nomeCasa} {placar.casa} x {placar.fora} {nomeFora}
             </p>
@@ -559,13 +630,25 @@ export default function JogoPage() {
             )}
 
             {modo === "copa" && (
-              <p className="text-zinc-400">
-                Voltando para a Copa...
-              </p>
+              <p className="text-zinc-400">Voltando para a Copa...</p>
             )}
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+export default function JogoPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-zinc-950 text-white p-6">
+          Carregando jogo...
+        </main>
+      }
+    >
+      <JogoContent />
+    </Suspense>
   );
 }
