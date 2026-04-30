@@ -290,36 +290,36 @@ function JogoContent() {
     }
 
     function dominarBola() {
-  const b = game.current.ball;
+      const b = game.current.ball;
 
-  if (b.ownerTeam) return;
+      if (b.ownerTeam) return;
 
-  const agora = performance.now();
+      const agora = performance.now();
 
-  game.current.home.forEach((p, i) => {
-    const dist = distance(p, b);
-    const raioDominio = b.lastKickerTeam === "home" ? p.r + b.r + 34 : p.r + b.r + 12;
+      game.current.home.forEach((p, i) => {
+        const dist = distance(p, b);
+        const raioDominio = b.lastKickerTeam === "home" ? p.r + b.r + 34 : p.r + b.r + 12;
 
-    if (dist < raioDominio && agora > b.ignorePickupUntil) {
-      b.ownerTeam = "home";
-      b.owner = i;
-      b.vx = 0;
-      b.vy = 0;
-      setControlado(i);
-    }
-  });
+        if (dist < raioDominio && agora > b.ignorePickupUntil) {
+          b.ownerTeam = "home";
+          b.owner = i;
+          b.vx = 0;
+          b.vy = 0;
+          setControlado(i);
+        }
+      });
 
-  game.current.away.forEach((p, i) => {
-    const dist = distance(p, b);
-    const raioDominio = b.lastKickerTeam === "away" ? p.r + b.r + 34 : p.r + b.r + 12;
+      game.current.away.forEach((p, i) => {
+        const dist = distance(p, b);
+        const raioDominio = b.lastKickerTeam === "away" ? p.r + b.r + 34 : p.r + b.r + 12;
 
-    if (dist < raioDominio && agora > b.ignorePickupUntil) {
-      b.ownerTeam = "away";
-      b.owner = i;
-      b.vx = 0;
-      b.vy = 0;
-    }
-  });
+        if (dist < raioDominio && agora > b.ignorePickupUntil) {
+          b.ownerTeam = "away";
+          b.owner = i;
+          b.vx = 0;
+          b.vy = 0;
+        }
+      });
 
       game.current.away.forEach((p, i) => {
         if (distance(p, b) < p.r + b.r + 8) {
@@ -517,48 +517,51 @@ function JogoContent() {
     }
 
     function tentarRoubar() {
-  const b = game.current.ball;
-  const jogador = game.current.home[controlado];
+      const b = game.current.ball;
+      const jogador = game.current.home[controlado];
 
-  if (!jogador) return;
+      if (!jogador) return;
 
-  // Se a IA estiver com a bola
-  if (b.ownerTeam === "away") {
-    const donoIA = game.current.away[b.owner];
+      // 🔥 ROUBAR DA IA (melhorado)
+      if (b.ownerTeam === "away") {
+        const donoIA = game.current.away[b.owner];
+        if (!donoIA) return;
 
-    if (!donoIA) return;
+        const dist = distance(jogador, donoIA);
 
-    const dist = distance(jogador, donoIA);
+        if (dist < 110) { // 👈 aumentei alcance
+          b.ownerTeam = "home";
+          b.owner = controlado;
+          b.vx = 0;
+          b.vy = 0;
+          b.ignorePickupUntil = 0;
+          b.lastKickerTeam = "home";
 
-    if (dist < 95) {
-      b.ownerTeam = "home";
-      b.owner = controlado;
-      b.vx = 0;
-      b.vy = 0;
-      b.ignorePickupUntil = 0;
-      b.lastKickerTeam = "home";
+          // cola a bola no pé
+          b.x = jogador.x + 18;
+          b.y = jogador.y;
 
-      // aproxima a bola no pé do jogador
-      b.x = jogador.x + 18;
-      b.y = jogador.y;
+          return;
+        }
+      }
 
-      return;
+      // 🔥 PEGAR BOLA SOLTA (melhorado)
+      if (!b.ownerTeam) {
+        const dist = distance(jogador, b);
+
+        if (dist < 110) {
+          b.ownerTeam = "home";
+          b.owner = controlado;
+          b.vx = 0;
+          b.vy = 0;
+          b.ignorePickupUntil = 0;
+          b.lastKickerTeam = "home";
+
+          b.x = jogador.x + 18;
+          b.y = jogador.y;
+        }
+      }
     }
-  }
-
-  // Se a bola estiver solta perto do jogador
-  if (!b.ownerTeam && distance(jogador, b) < 95) {
-    b.ownerTeam = "home";
-    b.owner = controlado;
-    b.vx = 0;
-    b.vy = 0;
-    b.ignorePickupUntil = 0;
-    b.lastKickerTeam = "home";
-
-    b.x = jogador.x + 18;
-    b.y = jogador.y;
-  }
-}
 
     function executarAcoes() {
       if (actions.current.pass) {
@@ -571,10 +574,11 @@ function JogoContent() {
         actions.current.shoot = false;
       }
 
-     if (actions.current.steal || keys.current["k"]) {
-  tentarRoubar();
-  actions.current.steal = false;
-}
+      if (actions.current.steal || keys.current["k"]) {
+        tentarRoubar();
+        actions.current.steal = false;
+      }
+    }
 
     function escolherPasseIA(donoIndex) {
       let alvoIndex = null;
@@ -1151,5 +1155,4 @@ export default function JogoPage() {
     </Suspense>
   );
 }
-
 
