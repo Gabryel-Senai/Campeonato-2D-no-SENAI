@@ -25,6 +25,7 @@ function JogoContent() {
   const replayFrames = useRef([]);
   const replayIndex = useRef(0);
   const pausadoPorGol = useRef(false);
+  const audioGolRef = useRef(null);
 
   const [times, setTimes] = useState([]);
   const [timeCasa, setTimeCasa] = useState("");
@@ -39,9 +40,9 @@ function JogoContent() {
 
   const game = useRef({
     ball: {
-      x: 400,
-      y: 225,
-      r: 7,
+      x: WIDTH / 2,
+      y: HEIGHT / 2,
+      r: 8,
       vx: 0,
       vy: 0,
       ownerTeam: null,
@@ -72,10 +73,23 @@ function JogoContent() {
     return escudos[nome] || "/escudos/default.png";
   }
 
+  function prepararAudioGol() {
+    if (!audioGolRef.current) {
+      audioGolRef.current = new Audio("/audio/gol.mp3");
+      audioGolRef.current.volume = 0.9;
+      audioGolRef.current.load();
+    }
+  }
+
   function tocarAudioGol() {
-    const audio = new Audio("/audio/gol.mp3");
-    audio.volume = 0.8;
-    audio.play().catch(() => {});
+    prepararAudioGol();
+
+    if (!audioGolRef.current) return;
+
+    audioGolRef.current.currentTime = 0;
+    audioGolRef.current.play().catch((err) => {
+      console.log("Áudio bloqueado ou não encontrado:", err);
+    });
   }
 
   async function carregarTimes() {
@@ -105,38 +119,141 @@ function JogoContent() {
   }, []);
 
   function criarJogadores() {
+    const meioY = HEIGHT / 2;
+
     game.current.home = [
-      { nome: "Goleiro", x: 90, y: 225, baseX: 90, baseY: 225, r: 12, speed: 2.0, role: "GK" },
-      { nome: "Zagueiro", x: 210, y: 120, baseX: 210, baseY: 120, r: 12, speed: 2.0, role: "DEF" },
-      { nome: "Lateral", x: 210, y: 330, baseX: 210, baseY: 330, r: 12, speed: 2.0, role: "DEF" },
-      { nome: "Meia", x: 360, y: 170, baseX: 360, baseY: 170, r: 12, speed: 2.0, role: "MEI" },
-      { nome: "Atacante", x: 430, y: 280, baseX: 430, baseY: 280, r: 12, speed: 2.6, role: "ATA" },
+      {
+        nome: "Goleiro",
+        x: 120,
+        y: meioY,
+        baseX: 120,
+        baseY: meioY,
+        r: 14,
+        speed: 2.4,
+        role: "GK",
+      },
+      {
+        nome: "Zagueiro",
+        x: 360,
+        y: meioY - 180,
+        baseX: 360,
+        baseY: meioY - 180,
+        r: 14,
+        speed: 2.5,
+        role: "DEF",
+      },
+      {
+        nome: "Lateral",
+        x: 360,
+        y: meioY + 180,
+        baseX: 360,
+        baseY: meioY + 180,
+        r: 14,
+        speed: 2.5,
+        role: "DEF",
+      },
+      {
+        nome: "Meia",
+        x: 620,
+        y: meioY - 80,
+        baseX: 620,
+        baseY: meioY - 80,
+        r: 14,
+        speed: 2.7,
+        role: "MEI",
+      },
+      {
+        nome: "Atacante",
+        x: 760,
+        y: meioY + 90,
+        baseX: 760,
+        baseY: meioY + 90,
+        r: 14,
+        speed: 2.8,
+        role: "ATA",
+      },
     ];
 
     game.current.away = [
-      { nome: "Goleiro IA", x: 710, y: 225, baseX: 710, baseY: 225, r: 12, speed: 2.0, role: "GK" },
-      { nome: "Zagueiro IA", x: 590, y: 120, baseX: 590, baseY: 120, r: 12, speed: 2.0, role: "DEF" },
-      { nome: "Lateral IA", x: 590, y: 330, baseX: 590, baseY: 330, r: 12, speed: 2.0, role: "DEF" },
-      { nome: "Meia IA", x: 440, y: 170, baseX: 440, baseY: 170, r: 12, speed: 2.2, role: "MEI" },
-      { nome: "Atacante IA", x: 390, y: 280, baseX: 390, baseY: 280, r: 12, speed: 2.4, role: "ATA" },
+      {
+        nome: "Goleiro IA",
+        x: WIDTH - 120,
+        y: meioY,
+        baseX: WIDTH - 120,
+        baseY: meioY,
+        r: 14,
+        speed: 2.2,
+        role: "GK",
+      },
+      {
+        nome: "Zagueiro IA",
+        x: WIDTH - 360,
+        y: meioY - 180,
+        baseX: WIDTH - 360,
+        baseY: meioY - 180,
+        r: 14,
+        speed: 2.2,
+        role: "DEF",
+      },
+      {
+        nome: "Lateral IA",
+        x: WIDTH - 360,
+        y: meioY + 180,
+        baseX: WIDTH - 360,
+        baseY: meioY + 180,
+        r: 14,
+        speed: 2.2,
+        role: "DEF",
+      },
+      {
+        nome: "Meia IA",
+        x: WIDTH - 620,
+        y: meioY - 80,
+        baseX: WIDTH - 620,
+        baseY: meioY - 80,
+        r: 14,
+        speed: 2.4,
+        role: "MEI",
+      },
+      {
+        nome: "Atacante IA",
+        x: WIDTH - 760,
+        y: meioY + 90,
+        baseX: WIDTH - 760,
+        baseY: meioY + 90,
+        r: 14,
+        speed: 2.5,
+        role: "ATA",
+      },
     ];
   }
 
-  function resetarCampo() {
+  function resetarCampo(posseInicial = null) {
     criarJogadores();
 
     game.current.ball = {
-      x: 400,
-      y: 225,
-      r: 7,
+      x: WIDTH / 2,
+      y: HEIGHT / 2,
+      r: 8,
       vx: 0,
       vy: 0,
       ownerTeam: null,
       owner: null,
     };
 
+    if (posseInicial === "home") {
+      game.current.ball.ownerTeam = "home";
+      game.current.ball.owner = 3;
+      setControlado(3);
+    }
+
+    if (posseInicial === "away") {
+      game.current.ball.ownerTeam = "away";
+      game.current.ball.owner = 3;
+    }
+
     replayFrames.current = [];
-    replayIndex.current = 0.35;
+    replayIndex.current = 0;
     pausadoPorGol.current = false;
 
     setMensagemGol("");
@@ -145,6 +262,8 @@ function JogoContent() {
 
   function iniciarJogo(casaId = timeCasa, foraId = timeFora) {
     if (String(casaId) === String(foraId)) return;
+
+    prepararAudioGol();
 
     window._voltandoParaCopa = false;
 
@@ -225,12 +344,15 @@ function JogoContent() {
     }
 
     function limitarCampo(obj) {
-      obj.x = Math.max(20, Math.min(WIDTH - 20, obj.x));
-      obj.y = Math.max(20, Math.min(HEIGHT - 20, obj.y));
+      obj.x = Math.max(30, Math.min(WIDTH - 30, obj.x));
+      obj.y = Math.max(30, Math.min(HEIGHT - 30, obj.y));
     }
 
     function bolaPertoDoJogador(jogador) {
-      return distance(jogador, game.current.ball) < jogador.r + game.current.ball.r + 18;
+      return (
+        distance(jogador, game.current.ball) <
+        jogador.r + game.current.ball.r + 22
+      );
     }
 
     function atualizarBolaNoDono() {
@@ -240,7 +362,7 @@ function JogoContent() {
         const dono = game.current.home[b.owner];
         if (!dono) return;
 
-        b.x = dono.x + 15;
+        b.x = dono.x + 18;
         b.y = dono.y;
       }
 
@@ -248,7 +370,7 @@ function JogoContent() {
         const dono = game.current.away[b.owner];
         if (!dono) return;
 
-        b.x = dono.x - 15;
+        b.x = dono.x - 18;
         b.y = dono.y;
       }
     }
@@ -259,7 +381,7 @@ function JogoContent() {
       if (b.ownerTeam) return;
 
       game.current.home.forEach((p, i) => {
-        if (distance(p, b) < p.r + b.r + 6) {
+        if (distance(p, b) < p.r + b.r + 8) {
           b.ownerTeam = "home";
           b.owner = i;
           b.vx = 0;
@@ -269,7 +391,7 @@ function JogoContent() {
       });
 
       game.current.away.forEach((p, i) => {
-        if (distance(p, b) < p.r + b.r + 6) {
+        if (distance(p, b) < p.r + b.r + 8) {
           b.ownerTeam = "away";
           b.owner = i;
           b.vx = 0;
@@ -305,41 +427,45 @@ function JogoContent() {
           const dono = game.current.home[b.owner];
 
           if (j.role === "ATA") {
-            targetX = Math.min(690, dono.x + 150);
-            targetY = dono.y < HEIGHT / 2 ? 315 : 135;
+            targetX = Math.min(WIDTH - 300, dono.x + 260);
+            targetY = dono.y < HEIGHT / 2 ? HEIGHT * 0.7 : HEIGHT * 0.3;
           } else if (j.role === "MEI") {
-            targetX = Math.min(610, dono.x + 90);
-            targetY = dono.y < HEIGHT / 2 ? 260 : 190;
+            targetX = Math.min(WIDTH - 420, dono.x + 180);
+            targetY = dono.y < HEIGHT / 2 ? HEIGHT * 0.58 : HEIGHT * 0.42;
           } else if (j.role === "DEF") {
-            targetX = Math.max(150, dono.x - 120);
+            targetX = Math.max(250, dono.x - 180);
             targetY = j.baseY;
           }
 
-          const marcadorPerto = game.current.away.some((ia) => distance(ia, j) < 45);
+          const marcadorPerto = game.current.away.some(
+            (ia) => distance(ia, j) < 70
+          );
+
           if (marcadorPerto) {
-            targetY += j.y < HEIGHT / 2 ? 35 : -35;
+            targetY += j.y < HEIGHT / 2 ? 65 : -65;
           }
         }
 
         if (awayHasBall) {
           if (j.role === "ATA" || j.role === "MEI") {
-            targetX = Math.max(230, b.x + 40);
+            targetX = Math.max(300, b.x + 70);
             targetY = b.y;
           } else if (j.role === "DEF") {
-            targetX = Math.max(120, b.x - 80);
+            targetX = Math.max(160, b.x - 120);
             targetY = j.baseY;
           }
         }
 
         if (!homeHasBall && !awayHasBall) {
-          const pertoDaBola = distance(j, b) < 140;
+          const pertoDaBola = distance(j, b) < 210;
+
           if (pertoDaBola) {
             targetX = b.x;
             targetY = b.y;
           }
         }
 
-        moveTo(j, targetX, targetY, 1.15);
+        moveTo(j, targetX, targetY, 1.05);
         limitarCampo(j);
       });
     }
@@ -353,9 +479,9 @@ function JogoContent() {
         if (i === donoIndex) return;
 
         const distancia = distance(dono, p);
-        const livre = game.current.away.every((ia) => distance(ia, p) > 38);
+        const livre = game.current.away.every((ia) => distance(ia, p) > 65);
         const avanco = p.x;
-        const pontuacao = avanco + (livre ? 120 : 0) - distancia * 0.35;
+        const pontuacao = avanco + (livre ? 180 : 0) - distancia * 0.3;
 
         if (pontuacao > melhorPontuacao) {
           melhorPontuacao = pontuacao;
@@ -390,8 +516,8 @@ function JogoContent() {
 
       b.ownerTeam = null;
       b.owner = null;
-      b.vx = (alvo.x - dono.x) * 0.105;
-      b.vy = (alvo.y - dono.y) * 0.105;
+      b.vx = (alvo.x - dono.x) * 0.075;
+      b.vy = (alvo.y - dono.y) * 0.075;
     }
 
     function chutarBola() {
@@ -414,9 +540,11 @@ function JogoContent() {
       b.ownerTeam = null;
       b.owner = null;
 
-      const forca = dono.x > 600 ? 10.5 : dono.x > 400 ? 12 : 14;
+      const distanciaGol = WIDTH - dono.x;
+      const forca = distanciaGol > 1100 ? 16 : distanciaGol > 650 ? 14 : 12;
+
       b.vx = forca;
-      b.vy = (GOAL_CENTER_Y - dono.y) * 0.055;
+      b.vy = (GOAL_CENTER_Y - dono.y) * 0.04;
     }
 
     function tentarRoubar() {
@@ -426,7 +554,7 @@ function JogoContent() {
       if (b.ownerTeam === "away") {
         const donoIA = game.current.away[b.owner];
 
-        if (donoIA && distance(jogador, donoIA) < 42) {
+        if (donoIA && distance(jogador, donoIA) < 50) {
           b.ownerTeam = "home";
           b.owner = controlado;
           b.vx = 0;
@@ -462,164 +590,159 @@ function JogoContent() {
     }
 
     function escolherPasseIA(donoIndex) {
-  let alvoIndex = null;
-  let melhorPontuacao = -9999;
-  const dono = game.current.away[donoIndex];
+      let alvoIndex = null;
+      let melhorPontuacao = -9999;
+      const dono = game.current.away[donoIndex];
 
-  game.current.away.forEach((p, i) => {
-    if (i === donoIndex) return;
+      game.current.away.forEach((p, i) => {
+        if (i === donoIndex) return;
 
-    const distancia = distance(dono, p);
-    const livre = game.current.home.every((j) => distance(j, p) > 45);
-    const avanco = WIDTH - p.x;
+        const distancia = distance(dono, p);
+        const livre = game.current.home.every((j) => distance(j, p) > 75);
+        const avanco = WIDTH - p.x;
+        const pontuacao = avanco + (livre ? 200 : 0) - distancia * 0.3;
 
-    const pontuacao = avanco + (livre ? 120 : 0) - distancia * 0.35;
+        if (pontuacao > melhorPontuacao) {
+          melhorPontuacao = pontuacao;
+          alvoIndex = i;
+        }
+      });
 
-    if (pontuacao > melhorPontuacao) {
-      melhorPontuacao = pontuacao;
-      alvoIndex = i;
-    }
-  });
-
-  return alvoIndex ?? 0;
-}
-
-function inteligenciaIA() {
-  const b = game.current.ball;
-
-  // IA tentando roubar se o jogador está com a bola
-  if (b.ownerTeam === "home") {
-    const donoHumano = game.current.home[b.owner];
-
-    let marcador = game.current.away[0];
-
-    game.current.away.forEach((ia) => {
-      if (distance(ia, donoHumano) < distance(marcador, donoHumano)) {
-        marcador = ia;
-      }
-    });
-
-    moveTo(marcador, donoHumano.x, donoHumano.y, marcador.speed + 0.7);
-
-    if (distance(marcador, donoHumano) < 34) {
-      b.ownerTeam = "away";
-      b.owner = game.current.away.indexOf(marcador);
-      b.vx = 0;
-      b.vy = 0;
+      return alvoIndex ?? 0;
     }
 
-    game.current.away.forEach((ia) => {
-      if (ia !== marcador) {
-        let tx = ia.baseX;
-        let ty = ia.baseY;
+    function inteligenciaIA() {
+      const b = game.current.ball;
 
-        if (ia.role === "DEF") {
-          tx = Math.max(450, donoHumano.x + 80);
-          ty = ia.baseY;
+      if (b.ownerTeam === "home") {
+        const donoHumano = game.current.home[b.owner];
+        if (!donoHumano) return;
+
+        let marcador = game.current.away[0];
+
+        game.current.away.forEach((ia) => {
+          if (distance(ia, donoHumano) < distance(marcador, donoHumano)) {
+            marcador = ia;
+          }
+        });
+
+        moveTo(marcador, donoHumano.x, donoHumano.y, marcador.speed + 0.3);
+
+        if (distance(marcador, donoHumano) < 44) {
+          b.ownerTeam = "away";
+          b.owner = game.current.away.indexOf(marcador);
+          b.vx = 0;
+          b.vy = 0;
         }
 
-        if (ia.role === "MEI" || ia.role === "ATA") {
-          tx = Math.max(350, donoHumano.x + 40);
-          ty = donoHumano.y + (ia.baseY < HEIGHT / 2 ? -50 : 50);
+        game.current.away.forEach((ia) => {
+          if (ia !== marcador) {
+            let tx = ia.baseX;
+            let ty = ia.baseY;
+
+            if (ia.role === "DEF") {
+              tx = Math.max(WIDTH * 0.55, donoHumano.x + 120);
+              ty = ia.baseY;
+            }
+
+            if (ia.role === "MEI" || ia.role === "ATA") {
+              tx = Math.max(WIDTH * 0.42, donoHumano.x + 90);
+              ty = donoHumano.y + (ia.baseY < HEIGHT / 2 ? -90 : 90);
+            }
+
+            moveTo(ia, tx, ty, 0.75);
+          }
+        });
+
+        game.current.away.forEach(limitarCampo);
+        return;
+      }
+
+      if (b.ownerTeam === "away") {
+        const dono = game.current.away[b.owner];
+        if (!dono) return;
+
+        const pertoDoGol = dono.x < WIDTH * 0.26;
+        const pressionado = game.current.home.some((j) => distance(j, dono) < 75);
+
+        if (pertoDoGol) {
+          b.ownerTeam = null;
+          b.owner = null;
+          b.vx = -14;
+          b.vy = (GOAL_CENTER_Y - dono.y) * 0.04;
+          return;
         }
 
-        moveTo(ia, tx, ty, 0.8);
+        if (pressionado || Math.random() < 0.02) {
+          const alvoIndex = escolherPasseIA(b.owner);
+          const alvo = game.current.away[alvoIndex];
+
+          if (alvo) {
+            b.ownerTeam = null;
+            b.owner = null;
+            b.vx = (alvo.x - dono.x) * 0.075;
+            b.vy = (alvo.y - dono.y) * 0.075;
+            return;
+          }
+        }
+
+        moveTo(dono, WIDTH * 0.08, GOAL_CENTER_Y, dono.speed);
+
+        game.current.away.forEach((ia, i) => {
+          if (i === b.owner) return;
+
+          let tx = ia.baseX;
+          let ty = ia.baseY;
+
+          if (ia.role === "ATA") {
+            tx = Math.max(160, dono.x - 260);
+            ty = dono.y < HEIGHT / 2 ? HEIGHT * 0.68 : HEIGHT * 0.32;
+          }
+
+          if (ia.role === "MEI") {
+            tx = Math.max(260, dono.x - 180);
+            ty = dono.y < HEIGHT / 2 ? HEIGHT * 0.58 : HEIGHT * 0.42;
+          }
+
+          if (ia.role === "DEF") {
+            tx = Math.min(WIDTH - 260, dono.x + 220);
+            ty = ia.baseY;
+          }
+
+          moveTo(ia, tx, ty, 0.8);
+        });
+
+        game.current.away.forEach(limitarCampo);
+        return;
       }
-    });
 
-    game.current.away.forEach(limitarCampo);
-    return;
-  }
+      if (!b.ownerTeam) {
+        let maisPerto = game.current.away[0];
 
-  // IA com a bola: ela decide chutar, tocar ou avançar
-  if (b.ownerTeam === "away") {
-    const dono = game.current.away[b.owner];
-    if (!dono) return;
+        game.current.away.forEach((ia) => {
+          if (distance(ia, b) < distance(maisPerto, b)) {
+            maisPerto = ia;
+          }
+        });
 
-    const pertoDoGol = dono.x < 230;
-    const pressionado = game.current.home.some((j) => distance(j, dono) < 45);
+        moveTo(maisPerto, b.x, b.y, maisPerto.speed + 0.25);
 
-    // Chute da IA
-    if (pertoDoGol) {
-      b.ownerTeam = null;
-      b.owner = null;
-      b.vx = -12;
-      b.vy = (GOAL_CENTER_Y - dono.y) * 0.055;
-      return;
+        if (distance(maisPerto, b) < maisPerto.r + b.r + 12) {
+          b.ownerTeam = "away";
+          b.owner = game.current.away.indexOf(maisPerto);
+          b.vx = 0;
+          b.vy = 0;
+        }
+
+        game.current.away.forEach((ia) => {
+          if (ia !== maisPerto) {
+            moveTo(ia, ia.baseX, ia.baseY, 0.65);
+          }
+        });
+
+        game.current.away.forEach(limitarCampo);
+      }
     }
-
-    // Passe da IA se estiver pressionada
-    if (pressionado && Math.random() < 0.05) {
-      const alvoIndex = escolherPasseIA(b.owner);
-      const alvo = game.current.away[alvoIndex];
-
-      b.ownerTeam = null;
-      b.owner = null;
-      b.vx = (alvo.x - dono.x) * 0.105;
-      b.vy = (alvo.y - dono.y) * 0.105;
-      return;
-    }
-
-    // Avança em direção ao gol
-    moveTo(dono, 80, GOAL_CENTER_Y, dono.speed + 0.4);
-
-    // Companheiros se movimentam para receber
-    game.current.away.forEach((ia, i) => {
-      if (i === b.owner) return;
-
-      let tx = ia.baseX;
-      let ty = ia.baseY;
-
-      if (ia.role === "ATA") {
-        tx = Math.max(90, dono.x - 140);
-        ty = dono.y < HEIGHT / 2 ? 315 : 135;
-      }
-
-      if (ia.role === "MEI") {
-        tx = Math.max(160, dono.x - 90);
-        ty = dono.y < HEIGHT / 2 ? 260 : 190;
-      }
-
-      if (ia.role === "DEF") {
-        tx = Math.min(650, dono.x + 120);
-        ty = ia.baseY;
-      }
-
-      moveTo(ia, tx, ty, 0.9);
-    });
-
-    game.current.away.forEach(limitarCampo);
-    return;
-  }
-
-  // Bola livre: IA tenta dominar
-  if (!b.ownerTeam) {
-    let maisPerto = game.current.away[0];
-
-    game.current.away.forEach((ia) => {
-      if (distance(ia, b) < distance(maisPerto, b)) {
-        maisPerto = ia;
-      }
-    });
-
-    moveTo(maisPerto, b.x, b.y, maisPerto.speed + 0.5);
-
-    if (distance(maisPerto, b) < maisPerto.r + b.r + 8) {
-      b.ownerTeam = "away";
-      b.owner = game.current.away.indexOf(maisPerto);
-      b.vx = 0;
-      b.vy = 0;
-    }
-
-    game.current.away.forEach((ia) => {
-      if (ia !== maisPerto) {
-        moveTo(ia, ia.baseX, ia.baseY, 0.65);
-      }
-    });
-  }
-
-  game.current.away.forEach(limitarCampo);
-}
 
     function registrarFrameReplay() {
       const frame = {
@@ -630,7 +753,7 @@ function inteligenciaIA() {
 
       replayFrames.current.push(frame);
 
-      if (replayFrames.current.length > 180) {
+      if (replayFrames.current.length > 300) {
         replayFrames.current.shift();
       }
     }
@@ -652,8 +775,12 @@ function inteligenciaIA() {
       }
 
       setTimeout(() => {
-        resetarCampo();
-      }, 10000);
+        if (tipo === "casa") {
+          resetarCampo("away");
+        } else {
+          resetarCampo("home");
+        }
+      }, 6000);
     }
 
     function moverBolaLivre() {
@@ -670,7 +797,7 @@ function inteligenciaIA() {
       b.vx *= 0.985;
       b.vy *= 0.985;
 
-      if (b.y < 20 || b.y > HEIGHT - 20) {
+      if (b.y < 30 || b.y > HEIGHT - 30) {
         b.vy *= -1;
       }
 
@@ -678,7 +805,7 @@ function inteligenciaIA() {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
           iniciarReplayGol("fora");
         } else {
-          b.x = 25;
+          b.x = 35;
           b.vx *= -0.6;
         }
       }
@@ -687,7 +814,7 @@ function inteligenciaIA() {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
           iniciarReplayGol("casa");
         } else {
-          b.x = WIDTH - 25;
+          b.x = WIDTH - 35;
           b.vx *= -0.6;
         }
       }
@@ -696,56 +823,55 @@ function inteligenciaIA() {
     }
 
     function drawField() {
-  ctx.fillStyle = "#15803d";
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      ctx.fillStyle = "#15803d";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 3;
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 3;
 
-  const margem = 25;
-  const campoW = WIDTH - margem * 2;
-  const campoH = HEIGHT - margem * 2;
-  const meioX = WIDTH / 2;
-  const meioY = HEIGHT / 2;
+      const margem = 25;
+      const campoW = WIDTH - margem * 2;
+      const campoH = HEIGHT - margem * 2;
+      const meioX = WIDTH / 2;
+      const meioY = HEIGHT / 2;
 
-  // linhas externas
-  ctx.strokeRect(margem, margem, campoW, campoH);
+      ctx.strokeRect(margem, margem, campoW, campoH);
 
-  // linha do meio
-  ctx.beginPath();
-  ctx.moveTo(meioX, margem);
-  ctx.lineTo(meioX, HEIGHT - margem);
-  ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(meioX, margem);
+      ctx.lineTo(meioX, HEIGHT - margem);
+      ctx.stroke();
 
-  // círculo central
-  ctx.beginPath();
-  ctx.arc(meioX, meioY, HEIGHT * 0.13, 0, Math.PI * 2);
-  ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(meioX, meioY, HEIGHT * 0.13, 0, Math.PI * 2);
+      ctx.stroke();
 
-  // áreas
-  const areaW = WIDTH * 0.12;
-  const areaH = HEIGHT * 0.28;
-  const areaY = meioY - areaH / 2;
+      const areaW = WIDTH * 0.12;
+      const areaH = HEIGHT * 0.28;
+      const areaY = meioY - areaH / 2;
 
-  ctx.strokeRect(margem, areaY, areaW, areaH);
-  ctx.strokeRect(WIDTH - margem - areaW, areaY, areaW, areaH);
+      ctx.strokeRect(margem, areaY, areaW, areaH);
+      ctx.strokeRect(WIDTH - margem - areaW, areaY, areaW, areaH);
 
-  // pequenas áreas
-  const pequenaAreaW = WIDTH * 0.055;
-  const pequenaAreaH = HEIGHT * 0.15;
-  const pequenaAreaY = meioY - pequenaAreaH / 2;
+      const pequenaAreaW = WIDTH * 0.055;
+      const pequenaAreaH = HEIGHT * 0.15;
+      const pequenaAreaY = meioY - pequenaAreaH / 2;
 
-  ctx.strokeRect(margem, pequenaAreaY, pequenaAreaW, pequenaAreaH);
-  ctx.strokeRect(WIDTH - margem - pequenaAreaW, pequenaAreaY, pequenaAreaW, pequenaAreaH);
+      ctx.strokeRect(margem, pequenaAreaY, pequenaAreaW, pequenaAreaH);
+      ctx.strokeRect(
+        WIDTH - margem - pequenaAreaW,
+        pequenaAreaY,
+        pequenaAreaW,
+        pequenaAreaH
+      );
 
-  // gols
-  const golH = HEIGHT * 0.12;
-  const golY = meioY - golH / 2;
+      const golH = HEIGHT * 0.12;
+      const golY = meioY - golH / 2;
 
-  ctx.fillStyle = "#111827";
-  ctx.fillRect(0, golY, margem, golH);
-  ctx.fillRect(WIDTH - margem, golY, margem, golH);
-}
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(0, golY, margem, golH);
+      ctx.fillRect(WIDTH - margem, golY, margem, golH);
+    }
 
     function drawPlayer(obj, color, selected = false) {
       ctx.beginPath();
@@ -755,16 +881,16 @@ function inteligenciaIA() {
 
       if (selected) {
         ctx.strokeStyle = "#facc15";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(obj.x, obj.y, obj.r + 5, 0, Math.PI * 2);
+        ctx.arc(obj.x, obj.y, obj.r + 8, 0, Math.PI * 2);
         ctx.stroke();
       }
 
       ctx.fillStyle = "white";
-      ctx.font = "10px Arial";
+      ctx.font = "bold 18px Arial";
       ctx.textAlign = "center";
-      ctx.fillText(obj.nome, obj.x, obj.y - 18);
+      ctx.fillText(obj.nome, obj.x, obj.y - 26);
     }
 
     function drawBall(ball = game.current.ball) {
@@ -774,6 +900,7 @@ function inteligenciaIA() {
       ctx.fill();
 
       ctx.strokeStyle = "#111";
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
 
@@ -791,12 +918,12 @@ function inteligenciaIA() {
       drawBall(frame.ball);
 
       ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(0, 0, WIDTH, 55);
+      ctx.fillRect(0, 0, WIDTH, 90);
 
       ctx.fillStyle = "#facc15";
-      ctx.font = "bold 26px Arial";
+      ctx.font = "bold 44px Arial";
       ctx.textAlign = "center";
-      ctx.fillText("REPLAY DO GOL", WIDTH / 2, 36);
+      ctx.fillText("REPLAY DO GOL", WIDTH / 2, 60);
     }
 
     function drawAtual() {
@@ -814,12 +941,12 @@ function inteligenciaIA() {
     }
 
     function loop() {
-      if (pausadoPorGol.current && replayFrames.current.length > 300) {
-        const frame = replayFrames.current[replayIndex.current];
+      if (pausadoPorGol.current && replayFrames.current.length > 0) {
+        const frame = replayFrames.current[Math.floor(replayIndex.current)];
 
         if (frame) {
           drawFrame(frame);
-          replayIndex.current += 1;
+          replayIndex.current += 0.35;
         } else {
           replayIndex.current = 0;
         }
@@ -869,7 +996,7 @@ function inteligenciaIA() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-5">
           <div>
             <h1 className="text-3xl font-bold">Jogo 2D</h1>
