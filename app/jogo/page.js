@@ -290,23 +290,36 @@ function JogoContent() {
     }
 
     function dominarBola() {
-      const b = game.current.ball;
+  const b = game.current.ball;
 
-      if (b.ownerTeam) return;
+  if (b.ownerTeam) return;
 
-      const agora = performance.now();
+  const agora = performance.now();
 
-      if (agora < b.ignorePickupUntil) return;
+  game.current.home.forEach((p, i) => {
+    const dist = distance(p, b);
+    const raioDominio = b.lastKickerTeam === "home" ? p.r + b.r + 34 : p.r + b.r + 12;
 
-      game.current.home.forEach((p, i) => {
-        if (distance(p, b) < p.r + b.r + 8) {
-          b.ownerTeam = "home";
-          b.owner = i;
-          b.vx = 0;
-          b.vy = 0;
-          setControlado(i);
-        }
-      });
+    if (dist < raioDominio && agora > b.ignorePickupUntil) {
+      b.ownerTeam = "home";
+      b.owner = i;
+      b.vx = 0;
+      b.vy = 0;
+      setControlado(i);
+    }
+  });
+
+  game.current.away.forEach((p, i) => {
+    const dist = distance(p, b);
+    const raioDominio = b.lastKickerTeam === "away" ? p.r + b.r + 34 : p.r + b.r + 12;
+
+    if (dist < raioDominio && agora > b.ignorePickupUntil) {
+      b.ownerTeam = "away";
+      b.owner = i;
+      b.vx = 0;
+      b.vy = 0;
+    }
+  });
 
       game.current.away.forEach((p, i) => {
         if (distance(p, b) < p.r + b.r + 8) {
@@ -641,13 +654,13 @@ function JogoContent() {
           if (alvo) {
             b.ownerTeam = null;
             b.owner = null;
-            b.ignorePickupUntil = performance.now() + 500;
+            b.ignorePickupUntil = performance.now() + 180;
             b.lastKickerTeam = "away";
 
             b.x = dono.x + (alvo.x > dono.x ? 30 : -30);
             b.y = dono.y;
-            b.vx = (alvo.x - dono.x) * 0.08;
-            b.vy = (alvo.y - dono.y) * 0.08;
+            b.vx = (alvo.x - dono.x) * 0.005;
+            b.vy = (alvo.y - dono.y) * 0.005;
             return;
           }
         }
