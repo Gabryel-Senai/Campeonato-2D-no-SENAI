@@ -517,29 +517,48 @@ function JogoContent() {
     }
 
     function tentarRoubar() {
-      const b = game.current.ball;
-      const jogador = game.current.home[controlado];
+  const b = game.current.ball;
+  const jogador = game.current.home[controlado];
 
-      if (b.ownerTeam === "away") {
-        const donoIA = game.current.away[b.owner];
+  if (!jogador) return;
 
-        if (donoIA && distance(jogador, donoIA) < 50) {
-          b.ownerTeam = "home";
-          b.owner = controlado;
-          b.vx = 0;
-          b.vy = 0;
-        }
+  // Se a IA estiver com a bola
+  if (b.ownerTeam === "away") {
+    const donoIA = game.current.away[b.owner];
 
-        return;
-      }
+    if (!donoIA) return;
 
-      if (!b.ownerTeam && bolaPertoDoJogador(jogador)) {
-        b.ownerTeam = "home";
-        b.owner = controlado;
-        b.vx = 0;
-        b.vy = 0;
-      }
+    const dist = distance(jogador, donoIA);
+
+    if (dist < 95) {
+      b.ownerTeam = "home";
+      b.owner = controlado;
+      b.vx = 0;
+      b.vy = 0;
+      b.ignorePickupUntil = 0;
+      b.lastKickerTeam = "home";
+
+      // aproxima a bola no pé do jogador
+      b.x = jogador.x + 18;
+      b.y = jogador.y;
+
+      return;
     }
+  }
+
+  // Se a bola estiver solta perto do jogador
+  if (!b.ownerTeam && distance(jogador, b) < 95) {
+    b.ownerTeam = "home";
+    b.owner = controlado;
+    b.vx = 0;
+    b.vy = 0;
+    b.ignorePickupUntil = 0;
+    b.lastKickerTeam = "home";
+
+    b.x = jogador.x + 18;
+    b.y = jogador.y;
+  }
+}
 
     function executarAcoes() {
       if (actions.current.pass) {
@@ -552,11 +571,10 @@ function JogoContent() {
         actions.current.shoot = false;
       }
 
-      if (actions.current.steal) {
-        tentarRoubar();
-        actions.current.steal = false;
-      }
-    }
+     if (actions.current.steal || keys.current["k"]) {
+  tentarRoubar();
+  actions.current.steal = false;
+}
 
     function escolherPasseIA(donoIndex) {
       let alvoIndex = null;
