@@ -156,16 +156,15 @@ function JogoContent() {
     };
 
     if (posseInicial === "home") {
-      game.current.ball.ownerTeam = "home";
-      game.current.ball.owner = 3;
-      setControlado(3);
-    }
+  game.current.ball.ownerTeam = "home";
+  game.current.ball.owner = 4; // atacante real
+  setControlado(4);
+}
 
-    if (posseInicial === "away") {
-      game.current.ball.ownerTeam = "away";
-      game.current.ball.owner = 3;
-    }
-
+if (posseInicial === "away") {
+  game.current.ball.ownerTeam = "away";
+  game.current.ball.owner = 4;
+}
     replayFrames.current = [];
     replayIndex.current = 0;
     pausadoPorGol.current = false;
