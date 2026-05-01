@@ -641,7 +641,7 @@ function JogoContent() {
       const dist = Math.hypot(dx, dy) || 1;
 
       // passe mais controlado, sem parecer chute
-      const velocidadePasse = 7.5;
+      const velocidadePasse = 9.5;
 
       b.vx = (dx / dist) * velocidadePasse;
       b.vy = (dy / dist) * velocidadePasse;
