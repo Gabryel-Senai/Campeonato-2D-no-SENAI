@@ -362,7 +362,7 @@ function JogoContent() {
     function bolaPertoDoJogador(jogador) {
       return (
         distance(jogador, game.current.ball) <
-        jogador.r + game.current.ball.r + 28
+        jogador.r + game.current.ball.r + 38
       );
     }
 
@@ -373,16 +373,16 @@ function JogoContent() {
         const dono = game.current.home[b.owner];
         if (!dono) return;
 
-        b.x = dono.x + 20;
-        b.y = dono.y;
+        b.x = dono.x + 14;
+        b.y = dono.y + 6;
       }
 
       if (b.ownerTeam === "away") {
         const dono = game.current.away[b.owner];
         if (!dono) return;
 
-        b.x = dono.x - 20;
-        b.y = dono.y;
+        b.x = dono.x + 14;
+        b.y = dono.y + 6;
       }
     }
 
@@ -624,18 +624,27 @@ function JogoContent() {
       const alvoIndex = escolherCompanheiroParaPasse(donoIndex);
       const alvo = game.current.home[alvoIndex];
 
+      if (!dono || !alvo) return;
+
       setControlado(alvoIndex);
 
       b.ownerTeam = null;
       b.owner = null;
-      b.ignorePickupUntil = performance.now() + 260;
+      b.ignorePickupUntil = performance.now() + 180;
       b.lastKickerTeam = "home";
 
-      b.x = dono.x + (alvo.x > dono.x ? 34 : -34);
-      b.y = dono.y;
+      b.x = dono.x + 22;
+      b.y = dono.y + 4;
 
-      b.vx = (alvo.x - dono.x) * 0.075;
-      b.vy = (alvo.y - dono.y) * 0.075;
+      const dx = alvo.x - dono.x;
+      const dy = alvo.y - dono.y;
+      const dist = Math.hypot(dx, dy) || 1;
+
+      // passe mais controlado, sem parecer chute
+      const velocidadePasse = 7.5;
+
+      b.vx = (dx / dist) * velocidadePasse;
+      b.vy = (dy / dist) * velocidadePasse;
     }
 
     function chutarBola() {
@@ -654,19 +663,28 @@ function JogoContent() {
       }
 
       const dono = game.current.home[b.owner] || jogador;
+      if (!dono) return;
 
       b.ownerTeam = null;
       b.owner = null;
-      b.ignorePickupUntil = performance.now() + 600;
+      b.ignorePickupUntil = performance.now() + 650;
       b.lastKickerTeam = "home";
 
-      const distanciaGol = WIDTH - dono.x;
-      const forca = distanciaGol > 1100 ? 19 : distanciaGol > 650 ? 16 : 14;
+      b.x = dono.x + 26;
+      b.y = dono.y + 4;
 
-      b.x = dono.x + 42;
-      b.y = dono.y;
+      const distanciaGol = WIDTH - dono.x;
+
+      // chute com força real
+      let forca = 24;
+
+      if (distanciaGol > 1200) forca = 28;
+      else if (distanciaGol > 750) forca = 25;
+      else if (distanciaGol > 400) forca = 22;
+      else forca = 19;
+
       b.vx = forca;
-      b.vy = (GOAL_CENTER_Y - dono.y) * 0.05;
+      b.vy = (GOAL_CENTER_Y - dono.y) * 0.055;
     }
 
     function tentarRoubar() {
@@ -990,8 +1008,10 @@ function JogoContent() {
       b.x += b.vx;
       b.y += b.vy;
 
-      b.vx *= 0.985;
-      b.vy *= 0.985;
+      const atrito = Math.abs(b.vx) > 18 ? 0.992 : 0.975;
+
+      b.vx *= atrito;
+      b.vy *= atrito;
 
       if (b.y < 30 || b.y > HEIGHT - 30) {
         b.vy *= -1;
