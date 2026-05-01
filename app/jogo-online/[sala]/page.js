@@ -21,7 +21,10 @@ export default function JogoOnlinePage() {
   const roleRef = useRef(null);
   const keys = useRef({});
   const remoteInput = useRef({});
-  const lastSend = useRef(0);
+  const lastInputSend = useRef(0);
+  const lastStateSend = useRef(0);
+
+  const placarRef = useRef({ home: 0, away: 0 });
 
   const [role, setRole] = useState(null);
   const [status, setStatus] = useState("Escolha seu lado para entrar na sala");
@@ -43,6 +46,11 @@ export default function JogoOnlinePage() {
     home: [],
     away: [],
   });
+
+  function atualizarPlacar(novoPlacar) {
+    placarRef.current = novoPlacar;
+    setPlacar(novoPlacar);
+  }
 
   function criarJogadores() {
     const meioY = HEIGHT / 2;
@@ -83,7 +91,6 @@ export default function JogoOnlinePage() {
   }
 
   useEffect(() => {
-    criarJogadores();
     resetarCampo("home");
   }, []);
 
@@ -114,7 +121,12 @@ export default function JogoOnlinePage() {
   function entrarComo(lado) {
     setRole(lado);
     roleRef.current = lado;
-    setStatus(lado === "home" ? "Você é o Player 1 - Azul" : "Você é o Player 2 - Vermelho");
+
+    setStatus(
+      lado === "home"
+        ? "Você é o Player 1 - Azul. Envie o link para seu amigo."
+        : "Você é o Player 2 - Vermelho."
+    );
   }
 
   useEffect(() => {
@@ -136,7 +148,15 @@ export default function JogoOnlinePage() {
 
     channel.on("broadcast", { event: "state" }, ({ payload }) => {
       if (roleRef.current === "away") {
-        game.current = payload.game;
+        const recebido = payload.game;
+
+        game.current.homeControlado = recebido.homeControlado;
+        game.current.awayControlado = recebido.awayControlado;
+        game.current.ball = recebido.ball;
+        game.current.home = recebido.home;
+        game.current.away = recebido.away;
+
+        placarRef.current = payload.placar;
         setPlacar(payload.placar);
       }
     });
@@ -146,7 +166,7 @@ export default function JogoOnlinePage() {
         setStatus(
           roleRef.current === "home"
             ? "Sala criada. Envie o link para seu amigo."
-            : "Conectado na sala. Aguardando o Player 1."
+            : "Conectado na sala. Aguardando sincronização do Player 1."
         );
       }
     });
@@ -203,8 +223,8 @@ export default function JogoOnlinePage() {
 
       const now = performance.now();
 
-      if (now - lastSend.current < 33) return;
-      lastSend.current = now;
+      if (now - lastInputSend.current < 50) return;
+      lastInputSend.current = now;
 
       channelRef.current.send({
         type: "broadcast",
@@ -263,6 +283,7 @@ export default function JogoOnlinePage() {
       if (b.ownerTeam === "home") {
         const dono = game.current.home[b.owner];
         if (!dono) return;
+
         b.x = dono.x + 14;
         b.y = dono.y + 6;
       }
@@ -270,6 +291,7 @@ export default function JogoOnlinePage() {
       if (b.ownerTeam === "away") {
         const dono = game.current.away[b.owner];
         if (!dono) return;
+
         b.x = dono.x - 14;
         b.y = dono.y + 6;
       }
@@ -478,7 +500,8 @@ export default function JogoOnlinePage() {
 
       if (b.x <= 0) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
-          setPlacar((p) => ({ ...p, away: p.away + 1 }));
+          const novo = { ...placarRef.current, away: placarRef.current.away + 1 };
+          atualizarPlacar(novo);
           resetarCampo("home");
           return;
         }
@@ -489,7 +512,8 @@ export default function JogoOnlinePage() {
 
       if (b.x >= WIDTH) {
         if (b.y >= GOAL_TOP && b.y <= GOAL_BOTTOM) {
-          setPlacar((p) => ({ ...p, home: p.home + 1 }));
+          const novo = { ...placarRef.current, home: placarRef.current.home + 1 };
+          atualizarPlacar(novo);
           resetarCampo("away");
           return;
         }
@@ -507,15 +531,24 @@ export default function JogoOnlinePage() {
 
       const now = performance.now();
 
-      if (now - lastSend.current < 33) return;
-      lastSend.current = now;
+      // 12 vezes por segundo para reduzir lag no Supabase
+      if (now - lastStateSend.current < 83) return;
+
+      lastStateSend.current = now;
 
       channelRef.current.send({
         type: "broadcast",
         event: "state",
         payload: {
-          game: game.current,
-          placar,
+          game: {
+            homeControlado: game.current.homeControlado,
+            awayControlado: game.current.awayControlado,
+            ball: game.current.ball,
+            home: game.current.home,
+            away: game.current.away,
+          },
+          placar: placarRef.current,
+          sentAt: now,
         },
       });
     }
@@ -627,7 +660,7 @@ export default function JogoOnlinePage() {
     loop();
 
     return () => cancelAnimationFrame(animationRef.current);
-  }, [role, placar, sala]);
+  }, [role, sala]);
 
   const inviteLink =
     typeof window !== "undefined"
@@ -677,7 +710,9 @@ export default function JogoOnlinePage() {
           <>
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4 flex justify-between items-center text-xl font-bold">
               <span>Azul: {placar.home}</span>
-              <span>{role === "home" ? "Você é o Azul" : "Você é o Vermelho"}</span>
+              <span>
+                {role === "home" ? "Você é o Azul" : "Você é o Vermelho"}
+              </span>
               <span>Vermelho: {placar.away}</span>
             </div>
 

@@ -82,6 +82,7 @@ export default function CampeonatoPage() {
             >
               Simular jogo
             </Link>
+            
           </div>
         </div>
 

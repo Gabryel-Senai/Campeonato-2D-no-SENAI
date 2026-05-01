@@ -32,6 +32,14 @@ export default function Home() {
           <Link href="/simulador" className="bg-green-600 hover:bg-green-700 px-5 py-3 rounded-xl font-semibold">
             Simular Partida
           </Link>
+          <Link
+            href={`/jogo-online/${Math.random().toString(36).substring(2, 8)}`}
+            className="block w-full"
+          >
+            <button className="w-full bg-green-600 hover:bg-green-700 py-4 rounded-xl font-bold text-lg text-white">
+              Jogar Online com Amigo 🌐
+            </button>
+          </Link>
         </div>
       </div>
     </main>
