@@ -188,22 +188,40 @@ function JogoContent() {
     setFim(false);
     setControlado(0);
     setJogoIniciado(true);
-    resetarCampo();
+    resetarCampo("home"); // começa com você no meio
   }
 
   useEffect(() => {
     function down(e) {
       const key = e.key.toLowerCase();
 
-      if (["h", "j", "k", " "].includes(key)) {
+      if (["h", "j", "k", "q"].includes(key)) {
         e.preventDefault();
       }
 
       if (key === "h") actions.current.pass = true;
       if (key === "j") actions.current.shoot = true;
       if (key === "k") actions.current.steal = true;
-
+      if (key === "q") {trocarJogadorMaisProximo();
+}
       keys.current[key] = true;
+      function trocarJogadorMaisProximo() {
+  const b = game.current.ball;
+
+  let menorDist = Infinity;
+  let index = controlado;
+
+  game.current.home.forEach((p, i) => {
+    const dist = Math.hypot(p.x - b.x, p.y - b.y);
+
+    if (dist < menorDist) {
+      menorDist = dist;
+      index = i;
+    }
+  });
+
+  setControlado(index);
+}
     }
 
     function up(e) {
@@ -624,6 +642,7 @@ function JogoContent() {
           b.owner = game.current.away.indexOf(marcador);
           b.vx = 0;
           b.vy = 0;
+          b.ignorePickupUntil = performance.now() + 400; // evita ficar roubando em loop
         }
 
         game.current.away.forEach((ia) => {
