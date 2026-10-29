@@ -67,7 +67,51 @@ Para fazer tudo isto funcionar em tempo real, com a física de colisão correta 
 * **[Supabase](https://supabase.com/):** O nosso banco de dados em nuvem. É ele que armazena quem ganhou, saldo de gols, chaves da Copa e permite a conexão P2P (jogador contra jogador) no modo online.
 
 ---
+🏗️ Arquitetura do Projeto
+---
+O projeto é dividido em duas partes principais: o Front-end (Next.js) e o Banco de Dados (PostgreSQL). Abaixo está a estrutura detalhada de ambos.
 
+1. Estrutura de Diretórios (Código-fonte)
+
+° app/page.js: Tela inicial e lógica principal do simulador do campeonato e tabela de classificação.
+
+° app/jogo-online/page.js: Interface dedicada para as partidas, animações e mecânicas do jogo online.
+
+° public/escudos/: Diretório contendo os recursos visuais e imagens PNG/SVG dos escudos dos times.
+
+° schema.sql: Script de inicialização estrutural para criar as tabelas no banco de dados e inserir os times iniciais.
+
+2. Estrutura do Banco de Dados
+
+O banco de dados é composto por duas tabelas principais que se relacionam para formar o campeonato:
+
+Tabela: times
+Armazena as informações e o desempenho de cada equipe no campeonato.
+
+° id (Primary Key): Identificador único do time.
+
+° nome (Text): Nome do clube (ex: Corinthians, Palmeiras).
+
+° cor (Text): Código hexadecimal da cor do time.
+
+° pontos, vitorias, empates, derrotas: Estatísticas de pontuação (Iniciam em 0).
+
+° gols_pro, gols_contra: Saldo de gols do time (Iniciam em 0).
+
+Tabela: partidas: Registra os confrontos, quem jogou e o placar final.
+
+° id (Primary Key): Identificador único da partida.
+
+° time_casa (Foreign Key): ID do time mandante (referencia a tabela times).
+
+° time_fora (Foreign Key): ID do time visitante (referencia a tabela times).
+
+° gols_casa, gols_fora: Placar do jogo.
+
+° status: Define se o jogo está em andamento ou finalizado (Padrão: 'finalizada').
+
+(Nota: O banco possui ON DELETE CASCADE, garantindo que se um time for excluído, seu histórico de partidas também será apagado de forma segura).
+---
 ## 🚀 Como Executar o Projeto na Sua Máquina
 
 Se você é desenvolvedor e quer rodar este projeto localmente, siga os passos abaixo:
