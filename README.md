@@ -73,7 +73,7 @@ O projeto é dividido em duas partes principais: o Front-end (Next.js) e o Banco
 
 1. Estrutura de Diretórios (Código-fonte)
 
-° app/page.js: Tela inicial e lógica principal do simulador do campeonato e tabela de classificação.
+* **app/page.js: Tela inicial e lógica principal do simulador do campeonato e tabela de classificação.
 
 ° app/jogo-online/page.js: Interface dedicada para as partidas, animações e mecânicas do jogo online.
 
