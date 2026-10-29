@@ -143,7 +143,7 @@ npm run dev
 
 ---
 
-## 👨‍💻 Autor
+## Autor
 
 Criado e desenvolvido por **Gabryel Meirelles Batista**. 
 Apoio e formação: SENAI SP.
